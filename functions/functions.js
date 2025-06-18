@@ -60,6 +60,8 @@ async function getCampaignRecords(campaignObject, trackNumber) {
     return replyEmbed
 }
 
+// Fetch top records for the Track of the Day (TOTD). Weekly Shorts is a
+// separate campaign and should be queried using the campaign commands.
 async function getTotdRecords(date) {
     let trackName, totdSearch, totdauthor, authorAccountId, trackUid = null
     await TMIOclient.totd.get(date).then(async totd => {
@@ -127,6 +129,62 @@ async function getTopPlayerScores(groupUId) {
     }
 }
 
+async function getTopPlayerScoresByRegion(groupUId, regionName) {
+    const APICredentials = await APILogin()
+
+    try {
+        const topPlayersResult = await getTopPlayersGroup(APICredentials[3], groupUId)
+        const regionData = topPlayersResult['tops'].find(t => t.zoneName.toLowerCase() === regionName.toLowerCase())
+        if (!regionData) {
+            return null
+        }
+        const playerList = regionData['top']
+        const dictionary = {
+            'users': []
+        }
+        const accountIds = []
+        for (const i in playerList) {
+            dictionary['users'].push({
+                'accountId': playerList[i]["accountId"],
+                'uid': '',
+                'nameOnPlatform': '',
+                'position': playerList[i]["position"],
+                'sp': playerList[i]["sp"]
+            })
+            accountIds.push(playerList[i]["accountId"])
+        }
+        const playerProfiles = await getProfiles(APICredentials[1].accessToken, accountIds)
+        const profileIdAccountIdMap = new Map();
+        const profileIds = []
+        for (const i in playerProfiles) {
+            let uid = playerProfiles[i]["uid"]
+            let accountId = playerProfiles[i]["accountId"]
+            profileIds.push(uid)
+            profileIdAccountIdMap.set(accountId, uid)
+        }
+        for (let i = 0; i < dictionary['users'].length; i++) {
+            dictionary['users'][i]['uid'] = profileIdAccountIdMap.get(dictionary['users'][i]['accountId'])
+        }
+        const profiles = await getProfilesById(APICredentials[0].ticket, profileIds)
+        for (const i in profiles["profiles"]) {
+            let { nameOnPlatform, profileId } = profiles["profiles"][i]
+            for (let i = 0; i < dictionary['users'].length; i++) {
+                if (profileId == dictionary['users'][i]['uid']) {
+                    dictionary['users'][i]['nameOnPlatform'] = nameOnPlatform
+                    break
+                }
+            }
+        }
+        const result = scoreFormatter(dictionary)
+        return result
+    } catch (e) {
+        console.log(e)
+    }
+}
+
 module.exports = {
-    getCampaignRecords, getTotdRecords, getTopPlayerScores
+    getCampaignRecords,
+    getTotdRecords,
+    getTopPlayerScores,
+    getTopPlayerScoresByRegion
 };

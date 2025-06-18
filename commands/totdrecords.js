@@ -3,9 +3,9 @@ const helper = require("../helper/helper.js")
 const { getTotdRecords } = require('../functions/functions.js');
 
 module.exports = {
-	data: new SlashCommandBuilder()
-		.setName('totdrecords')
-		.setDescription('Get top records for TOTD'),
+        data: new SlashCommandBuilder()
+                .setName('totdrecords')
+                .setDescription('Get top records for the Track of the Day (TOTD)'),
 
 	async execute(interaction) {
 		await interaction.deferReply();
