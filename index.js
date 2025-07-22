@@ -15,9 +15,15 @@ const client = new Client({
 client.commands = new Collection();
 const commandFiles = fs.readdirSync('./commands').filter((file) => file.endsWith('.js'));
 
+const allowed = process.env.ALLOWED_COMMANDS
+        ? process.env.ALLOWED_COMMANDS.split(',').map((c) => c.trim())
+        : ['totdrecords'];
+
 for (const file of commandFiles) {
-	const command = require(`./commands/${file}`);
-	client.commands.set(command.data.name, command);
+        const command = require(`./commands/${file}`);
+        if (allowed.includes(command.data.name)) {
+                client.commands.set(command.data.name, command);
+        }
 }
 
 client.once('ready', async () => {
