@@ -78,6 +78,29 @@ async function getTotdRecords(date) {
     return replyEmbed
 }
 
+async function getWeeklyShorts() {
+    const results = []
+    const search = await TMIOclient.campaigns.search('Weekly Shorts')
+    if (!search || !search.length) {
+        return results
+    }
+    const campaign = await search[0].getCampaign()
+    for (let i = 0; i < 5 && i < campaign._data.playlist.length; i++) {
+        const track = campaign._data.playlist[i]
+        const trackUid = track.mapUid
+        const trackName = track.name
+        const authorAccountId = track.author
+        let authorName = ''
+        await TMIOclient.players.get(authorAccountId).then(player => {
+            authorName = player.name
+        })
+        const topTimesResult = await getTopPlayerTimes(trackUid)
+        const embed = embedFormatter(trackName, trackUid, topTimesResult, authorName, authorAccountId)
+        results.push(embed)
+    }
+    return results
+}
+
 async function getTopPlayerScores(groupUId) {
     const APICredentials = await APILogin()
 
@@ -128,5 +151,8 @@ async function getTopPlayerScores(groupUId) {
 }
 
 module.exports = {
-    getCampaignRecords, getTotdRecords, getTopPlayerScores
+    getCampaignRecords,
+    getTotdRecords,
+    getTopPlayerScores,
+    getWeeklyShorts
 };

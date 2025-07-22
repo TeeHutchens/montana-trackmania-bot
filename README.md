@@ -1,6 +1,8 @@
 # **State Trackmania Bot discord.js**
 
-A simple trackmania bot used to fetch state trackmania records within state groups.
+This repository contains a small Discord bot built with **discord.js**. The bot interacts with the Trackmania.io API to display player stats and leaderboards right inside a Discord server. It exposes a set of slash commands that query campaigns, Track of the Day information and player profiles. All commands are located in the `commands/` folder and are automatically registered using `deploy-commands.js`.
+
+The bot keeps no persistent state; every command performs live requests against the Trackmania API. Authentication to the Trackmania services is handled in `functions/authentication.js`.
 
 ## Getting started
 
@@ -57,4 +59,5 @@ node index.js
 | **currentrecords** | Get the top 5 records for a particular track in the current campaign                 | /currentrecords 15                          |
 | **playerprofile**  | Get a player's profile                                                               | /playerprofile Wirtual                      |
 | **records**        | Get records for a particular track in any campaign (this command does not work well) | /records campaign:summer 2020 tracknumber:1 |
-| **totdrecords**    | Get the top 5 records for the current campaign                                       | /totdrecords                                |
+| **totdrecords**    | Get the top 5 records for the Track of the Day                                       | /totdrecords                                |
+| **weeklyshorts**   | Get embeds for all Weekly Short maps with the top 5 players    | /weeklyshorts                               |
