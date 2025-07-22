@@ -86,6 +86,22 @@ function embedScoresFormatter(data, campaign, ioCampaignId) {
     return replyEmbed
 }
 
+function embedRegionScoresFormatter(data, campaign, ioCampaignId, region) {
+    const replyEmbed = new MessageEmbed()
+        .setColor('#f4ca16')
+        .setTitle(`${region} Score Leaders for ${campaign}`)
+        .setURL(`https://trackmania.io/#/campaigns/0/${ioCampaignId}`)
+        .setDescription(`${campaign} Score Leaders in ${region}`)
+        .addFields(
+            { name: 'Rank', value: data[0], inline: true },
+            { name: 'Player', value: Formatters.bold(data[1]), inline: true },
+            { name: 'Score', value: data[2], inline: true },
+        )
+        .setFooter('This bot is currently in active development.');
+
+    return replyEmbed
+}
+
 async function getPlayerProfile(playerName) {
     let playerCotd, playerMatchmaking, name, playerObject = null
 
@@ -162,5 +178,12 @@ function ordinal_suffix_of(i) {
 }
 
 module.exports = {
-    embedFormatter, timeFormatter, embedScoresFormatter, getPlayerProfile, recordPlacingFormatter, playerProfileFormatter, scoreFormatter
+    embedFormatter,
+    timeFormatter,
+    embedScoresFormatter,
+    embedRegionScoresFormatter,
+    getPlayerProfile,
+    recordPlacingFormatter,
+    playerProfileFormatter,
+    scoreFormatter
 };

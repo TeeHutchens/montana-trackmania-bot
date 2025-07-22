@@ -57,4 +57,5 @@ node index.js
 | **currentrecords** | Get the top 5 records for a particular track in the current campaign                 | /currentrecords 15                          |
 | **playerprofile**  | Get a player's profile                                                               | /playerprofile Wirtual                      |
 | **records**        | Get records for a particular track in any campaign (this command does not work well) | /records campaign:summer 2020 tracknumber:1 |
-| **totdrecords**    | Get the top 5 records for the current campaign                                       | /totdrecords                                |
+| **totdrecords**    | Get the top 5 records for the current Track of the Day (TOTD)                        | /totdrecords                                |
+| **trackmania**     | Get region score leaders for the current official campaign                           | /trackmania region:Quebec                   |
