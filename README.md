@@ -43,7 +43,7 @@ ALLOWED_COMMANDS =
 - UBI_USERNAME: This is the email address used to login into Ubisoft.
 - UBI_PASSWORD: Password used to log into Ubisoft.
 - GROUP_UID: This is the group ID for your trackmania state or campaign group. To fetch this information, you might need to use the [Http inspector](https://openplanet.dev/plugin/httpinspect) plugin created by [Miss](https://github.com/sponsors/codecat) to inspect your incoming and outgoing packets to get your group ID.
-- ALLOWED_COMMANDS: Comma separated list of slash commands that the bot should register. Defaults to `totdrecords` if not set.
+- ALLOWED_COMMANDS: Comma separated list of slash commands that the bot should register. Defaults to `weeklyshorts` if not set.
 
 7. Run the following command to start running the project:
 

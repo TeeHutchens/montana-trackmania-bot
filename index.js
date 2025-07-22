@@ -17,7 +17,7 @@ const commandFiles = fs.readdirSync('./commands').filter((file) => file.endsWith
 
 const allowed = process.env.ALLOWED_COMMANDS
         ? process.env.ALLOWED_COMMANDS.split(',').map((c) => c.trim())
-        : ['totdrecords'];
+        : ['weeklyshorts'];
 
 for (const file of commandFiles) {
         const command = require(`./commands/${file}`);
