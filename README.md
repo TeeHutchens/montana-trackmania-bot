@@ -2,7 +2,7 @@
 
 A simple trackmania bot used to fetch state trackmania records within state groups.
 
-## Getting stated
+## Getting started
 
 If you want to quickly get this bot up and running on your environment:
 
@@ -32,6 +32,7 @@ GUILD_ID =
 UBI_USERNAME =
 UBI_PASSWORD =
 GROUP_UID =
+ALLOWED_COMMANDS =
 ```
 
 - DISCORD_TOKEN: The discord bot token. This token is located under the `Bot` section in your selected App in the Discord Developer Portal.
@@ -40,6 +41,7 @@ GROUP_UID =
 - UBI_USERNAME: This is the email address used to login into Ubisoft.
 - UBI_PASSWORD: Password used to log into Ubisoft.
 - GROUP_UID: This is the group ID for your trackmania state or campaign group. To fetch this information, you might need to use the [Http inspector](https://openplanet.dev/plugin/httpinspect) plugin created by [Miss](https://github.com/sponsors/codecat) to inspect your incoming and outgoing packets to get your group ID.
+- ALLOWED_COMMANDS: Comma separated list of slash commands that the bot should register. Defaults to `totdrecords` if not set.
 
 7. Run the following command to start running the project:
 

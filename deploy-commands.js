@@ -8,9 +8,15 @@ require('dotenv').config()
 const commands = [];
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
+const allowed = process.env.ALLOWED_COMMANDS
+        ? process.env.ALLOWED_COMMANDS.split(',').map(c => c.trim())
+        : ['totdrecords'];
+
 for (const file of commandFiles) {
-	const command = require(`./commands/${file}`);
-	commands.push(command.data.toJSON());
+        const command = require(`./commands/${file}`);
+        if (allowed.includes(command.data.name)) {
+                commands.push(command.data.toJSON());
+        }
 }
 
 const rest = new REST({ version: '9' }).setToken(process.env.DISCORD_TOKEN);
