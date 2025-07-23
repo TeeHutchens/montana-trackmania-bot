@@ -17,18 +17,26 @@ function cleanTrackName(name) {
     
     let cleaned = name
     
-    // Remove Trackmania color codes
-    // Based on analysis, Trackmania uses 3-digit color codes ($XXX)
-    // Some apparent 4-digit codes are actually 3-digit + text
+    // Remove Trackmania color codes systematically
+    // Priority: Remove realistic patterns first, be conservative about edge cases
     
-    // Remove all $ followed by exactly 3 hex digits
+    // Remove valid 3-digit hex color codes (most common and safest)
     cleaned = cleaned.replace(/\$[0-9A-Fa-f]{3}/g, '')
     
-    // Handle malformed codes like $o (single character after $)
-    cleaned = cleaned.replace(/\$[a-zA-Z0-9]/g, '')
+    // Remove other 3-character codes that might be invalid but formatted like color codes
+    cleaned = cleaned.replace(/\$[0-9A-Za-z]{3}/g, '')
     
-    // Clean up multiple spaces but preserve dashes
-    cleaned = cleaned.replace(/\s+/g, ' ').trim()
+    // Remove obvious single-character codes only if they're followed by whitespace or string end
+    // This prevents removing parts of words
+    cleaned = cleaned.replace(/\$[0-9A-Za-z](?=\s|$)/g, '')
+    
+    // Clean up multiple spaces but preserve existing dash formatting
+    cleaned = cleaned.replace(/\s+/g, ' ')
+    
+    // Only add spaces around dashes if they're at the start with numbers (for "1-Name" -> "1 - Name")
+    cleaned = cleaned.replace(/^(\d+)\s*-\s*/g, '$1 - ')
+    
+    cleaned = cleaned.trim()
     
     // If the result is empty or just whitespace, return Unknown Track
     if (!cleaned || cleaned.length === 0) {
@@ -161,7 +169,9 @@ async function getCachedMapInfo(mapUid, apiCredentials) {
             const rawMapData = await mapResponse.json();
             
             // Clean the track name to remove hex color codes
-            mapData.name = cleanTrackName(rawMapData.name) || mapData.name;
+            const cleanedName = cleanTrackName(rawMapData.name);
+            
+            mapData.name = cleanedName || mapData.name;
             mapData.author = rawMapData.author || mapData.author;
             
             // Get the actual author name if we have a valid author ID
