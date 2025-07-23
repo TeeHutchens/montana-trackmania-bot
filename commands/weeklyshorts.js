@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
+const helper = require("../helper/helper.js")
 const { getWeeklyShorts } = require('../functions/functions.js');
 
 module.exports = {

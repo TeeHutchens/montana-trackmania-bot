@@ -2,9 +2,11 @@ const { loginUbi, loginTrackmaniaUbi, loginTrackmaniaNadeo } = require('trackman
 
 async function ubiLogin(credentials) {
     try {
+        console.log('Attempting Ubisoft login with credentials...');
         return await loginUbi(credentials)
     } catch (e) {
-        console.log(e)
+        console.log('Ubisoft login error:', e.message)
+        throw e
     }
 }
 
@@ -29,13 +31,24 @@ async function trackmaniaNadeoLogin(nadeoLogin) {
 }
 
 async function APILogin() {
-    const credentials = Buffer.from(process.env.UBI_USERNAME + ':' + process.env.UBI_PASSWORD).toString('base64')
+    const username = process.env.UBI_USERNAME;
+    const password = process.env.UBI_PASSWORD;
+    
+    if (!username || !password) {
+        throw new Error('UBI_USERNAME and UBI_PASSWORD must be set in .env file');
+    }
+    
+    console.log(`Attempting authentication for user: ${username}`);
+    
+    // Try the base64 approach first (this is what the library expects)
+    const credentials = Buffer.from(username + ':' + password).toString('base64')
+    console.log('Generated base64 credentials');
+    
     const loggedIn = await ubiLogin(credentials)
     const nadeoLoggedIn = await nadeoLogin(loggedIn)
     const trackmaniaNadeoLoggedIn = await trackmaniaNadeoLogin(nadeoLoggedIn)
     const nadeoToken = trackmaniaNadeoLoggedIn.accessToken
     return [loggedIn, nadeoLoggedIn, trackmaniaNadeoLoggedIn, nadeoToken]
-
 }
 
 module.exports = {

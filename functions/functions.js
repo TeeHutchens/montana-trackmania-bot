@@ -2,42 +2,173 @@ const TMIO = require('trackmania.io'), TMIOclient = new TMIO.Client();
 const { getTopPlayersGroup, getTopPlayersMap, getMaps, getMapRecords, getProfiles, getProfilesById } = require('trackmania-api-node')
 const { APILogin } = require("../functions/authentication.js")
 const { embedFormatter, recordPlacingFormatter, scoreFormatter } = require("../helper/helper.js")
+const fetch = require('node-fetch')
 
-TMIOclient.setUserAgent('Project Name: state-trackmania-bot, Contact: Bladed#1980 on Discord')
+TMIOclient.setUserAgent('state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: taylordouglashutchens@outlook.com or @TeeHutchens on Discord')
 
 async function getTopPlayerTimes(mapUid) {
-    const APICredentials = await APILogin()
+    try {
+        console.log(`Getting API credentials...`)
+        const APICredentials = await APILogin()
 
-    const topPlayersResult = await getTopPlayersMap(APICredentials[3], mapUid)
-    const map = await getMaps(APICredentials[1].accessToken, [mapUid])
-    const mapId = map[0]['mapId']
-    const playerList = topPlayersResult['tops'][3]['top']
-    const accountIds = []
-    for (const i in playerList) {
-        accountIds.push(playerList[i]["accountId"])
-    }
+        console.log(`Getting top players for map: ${mapUid}`)
+        const topPlayersResult = await getTopPlayersMap(APICredentials[3], mapUid)
+        
+        const map = await getMaps(APICredentials[1].accessToken, [mapUid])
+        const mapId = map[0]['mapId']
+        
+        // Get the top players list (usually at index 0 for World rankings)
+        let playerList = null
+        if (topPlayersResult && topPlayersResult.tops && topPlayersResult.tops[0] && topPlayersResult.tops[0].top) {
+            playerList = topPlayersResult.tops[0].top
+            console.log(`Found ${playerList.length} players in World rankings`)
+        } else {
+            console.log('Could not find player rankings in expected structure')
+        }
+        
+        if (!playerList || playerList.length === 0) {
+            console.log('No players found for this map')
+            return 'No records found for this track.'
+        }
+        
+        const accountIds = []
+        for (const i in playerList) {
+            accountIds.push(playerList[i]["accountId"])
+        }
 
-    const playerProfiles = await getProfiles(APICredentials[1].accessToken, accountIds)
-    const profileIdAccountIdMap = new Map();
-    const profileIds = []
-    for (const i in playerProfiles) {
-        let uid = playerProfiles[i]['uid']
-        let accountId = playerProfiles[i]['accountId']
-        profileIds.push(uid)
-        profileIdAccountIdMap.set(uid, accountId)
-    }
+        console.log(`Getting profiles for ${accountIds.length} players...`)
+        const playerProfiles = await getProfiles(APICredentials[1].accessToken, accountIds)
+        const profileIdAccountIdMap = new Map();
+        const profileIds = []
+        for (const i in playerProfiles) {
+            let uid = playerProfiles[i]['uid']
+            let accountId = playerProfiles[i]['accountId']
+            profileIds.push(uid)
+            profileIdAccountIdMap.set(uid, accountId)
+        }
 
-    const profiles = await getProfilesById(APICredentials[0].ticket, profileIds)
-    const playerTimeMap = new Map()
-    for (const i in profiles['profiles']) {
-        let { nameOnPlatform, profileId } = profiles['profiles'][i]
-        let record = await getMapRecords(APICredentials[1].accessToken, profileIdAccountIdMap.get(profileId), mapId)
-        let time = record[0]['recordScore']['time']
-        playerTimeMap.set(nameOnPlatform, time)
+        console.log(`Getting detailed profiles...`)
+        const profiles = await getProfilesById(APICredentials[0].ticket, profileIds)
+        const playerTimeMap = new Map()
+        
+        for (const i in profiles['profiles']) {
+            try {
+                let { nameOnPlatform, profileId } = profiles['profiles'][i]
+                let record = await getMapRecords(APICredentials[1].accessToken, profileIdAccountIdMap.get(profileId), mapId)
+                if (record && record.length > 0) {
+                    let time = record[0]['recordScore']['time']
+                    playerTimeMap.set(nameOnPlatform, time)
+                }
+            } catch (recordError) {
+                console.log(`Error getting record for player:`, recordError.message)
+                continue
+            }
+        }
+        
+        if (playerTimeMap.size === 0) {
+            return 'No valid records found for this track.'
+        }
+        
+        const playerTimeMapSort = new Map([...playerTimeMap.entries()].sort((a, b) => a[1] - b[1])); // Re-orders players' records from best to worst
+        console.log(playerTimeMapSort)
+        return recordPlacingFormatter(playerTimeMapSort)
+    } catch (error) {
+        console.error('Error in getTopPlayerTimes:', error.message)
+        console.error('Stack trace:', error.stack)
+        return 'Error fetching player times for this track.'
     }
-    const playerTimeMapSort = new Map([...playerTimeMap.entries()].sort((a, b) => a[1] - b[1])); // Re-orders players' records from best to worst
-    console.log(playerTimeMapSort)
-    return recordPlacingFormatter(playerTimeMapSort)
+}
+
+async function getMontanaTopPlayerTimes(mapUid) {
+    try {
+        console.log(`🏔️ Getting Montana players for map: ${mapUid}`)
+        const APICredentials = await APILogin()
+        const montanaZoneId = '3022e37a-7e13-11e8-8060-e284abfd2bc4';
+
+        // Use the zone leaderboard API to get Montana-specific rankings
+        const leaderboardUrl = `https://live-services.trackmania.nadeo.live/api/token/leaderboard/group/Personal_Best/map/${mapUid}/top?length=100&offset=0`;
+        const headers = {
+            'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'state-trackmania-bot / montana@discord'
+        };
+
+        console.log(`Getting zone-based leaderboard data...`)
+        const response = await fetch(leaderboardUrl, { headers });
+        
+        if (!response.ok) {
+            console.log(`❌ Zone leaderboard API failed: ${response.status}`)
+            console.log('Falling back to world rankings...')
+            return await getTopPlayerTimes(mapUid)
+        }
+
+        const data = await response.json();
+        console.log(`✅ Got zone leaderboard with ${data.tops?.length || 0} zones`)
+
+        // Find Montana zone in the response
+        const montanaZone = data.tops?.find(zone => 
+            zone.zoneName === 'Montana' || zone.zoneId === montanaZoneId
+        );
+
+        if (!montanaZone || !montanaZone.top || montanaZone.top.length === 0) {
+            console.log(`❌ No Montana players found in zone leaderboard, falling back to world rankings`)
+            return await getTopPlayerTimes(mapUid)
+        }
+
+        console.log(`🎯 Found ${montanaZone.top.length} Montana players!`)
+
+        // Get map info for record processing
+        const map = await getMaps(APICredentials[1].accessToken, [mapUid])
+        const mapId = map[0]['mapId']
+
+        // Process Montana players
+        const montanaPlayers = montanaZone.top;
+        const accountIds = montanaPlayers.map(player => player.accountId);
+
+        console.log(`Getting profiles for ${accountIds.length} Montana players...`)
+        const playerProfiles = await getProfiles(APICredentials[1].accessToken, accountIds)
+        const profileIdAccountIdMap = new Map();
+        const profileIds = []
+        for (const i in playerProfiles) {
+            let uid = playerProfiles[i]['uid']
+            let accountId = playerProfiles[i]['accountId']
+            profileIds.push(uid)
+            profileIdAccountIdMap.set(uid, accountId)
+        }
+
+        console.log(`Getting detailed Montana player profiles...`)
+        const profiles = await getProfilesById(APICredentials[0].ticket, profileIds)
+        const playerTimeMap = new Map()
+        
+        for (const i in profiles['profiles']) {
+            try {
+                let { nameOnPlatform, profileId } = profiles['profiles'][i]
+                let record = await getMapRecords(APICredentials[1].accessToken, profileIdAccountIdMap.get(profileId), mapId)
+                if (record && record.length > 0) {
+                    let time = record[0]['recordScore']['time']
+                    playerTimeMap.set(nameOnPlatform, time)
+                }
+            } catch (recordError) {
+                console.log(`Error getting record for Montana player:`, recordError.message)
+                continue
+            }
+        }
+        
+        if (playerTimeMap.size === 0) {
+            console.log('No valid Montana records found, falling back to world rankings')
+            return await getTopPlayerTimes(mapUid)
+        }
+        
+        const playerTimeMapSort = new Map([...playerTimeMap.entries()].sort((a, b) => a[1] - b[1])); // Re-orders players' records from best to worst
+        console.log('🏔️ Montana leaderboard:', playerTimeMapSort)
+        return recordPlacingFormatter(playerTimeMapSort) + '\n\n🏔️ *Montana Group Rankings*'
+    
+    } catch (error) {
+        console.error('❌ Error in getMontanaTopPlayerTimes:', error.message)
+        console.log('✅ Falling back to world rankings...')
+        const worldResult = await getTopPlayerTimes(mapUid)
+        return worldResult + '\n\n🌍 *World Rankings (Montana group unavailable)*'
+    }
 }
 
 async function getCampaignRecords(campaignObject, trackNumber) {
@@ -80,23 +211,116 @@ async function getTotdRecords(date) {
 
 async function getWeeklyShorts() {
     const results = []
-    const search = await TMIOclient.campaigns.search('Weekly Shorts')
-    if (!search || !search.length) {
-        return results
-    }
-    const campaign = await search[0].getCampaign()
-    for (let i = 0; i < 5 && i < campaign._data.playlist.length; i++) {
-        const track = campaign._data.playlist[i]
-        const trackUid = track.mapUid
-        const trackName = track.name
-        const authorAccountId = track.author
-        let authorName = ''
-        await TMIOclient.players.get(authorAccountId).then(player => {
-            authorName = player.name
+    try {
+        console.log('Getting Weekly Shorts from OpenPlanet/Nadeo API...')
+        
+        // Get API credentials for Nadeo services
+        const APICredentials = await APILogin()
+        
+        // Fetch weekly shorts data from the working OpenPlanet API
+        console.log('Fetching weekly shorts campaign data...')
+        const response = await fetch('https://live-services.trackmania.nadeo.live/api/campaign/weekly-shorts?offset=0&length=1', {
+            headers: {
+                'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
+                'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: taylordouglashutchens@outlook.com or @TeeHutchens on Discord'
+            }
         })
-        const topTimesResult = await getTopPlayerTimes(trackUid)
-        const embed = embedFormatter(trackName, trackUid, topTimesResult, authorName, authorAccountId)
-        results.push(embed)
+        
+        if (!response.ok) {
+            throw new Error(`Weekly shorts API returned ${response.status}: ${await response.text()}`)
+        }
+        
+        const weeklyData = await response.json()
+        console.log(`Received ${weeklyData.campaignList.length} weekly campaigns`)
+        
+        if (!weeklyData.campaignList || weeklyData.campaignList.length === 0) {
+            throw new Error('No weekly campaigns found in API response')
+        }
+        
+        // Get the latest weekly campaign
+        const latestCampaign = weeklyData.campaignList[0]
+        console.log(`Processing campaign: ${latestCampaign.name} with ${latestCampaign.playlist.length} tracks`)
+        
+        // Process up to 5 tracks from the campaign
+        const tracksToProcess = Math.min(5, latestCampaign.playlist.length)
+        
+        for (let i = 0; i < tracksToProcess; i++) {
+            try {
+                const playlistItem = latestCampaign.playlist[i]
+                const mapUid = playlistItem.mapUid
+                
+                console.log(`Processing track ${i + 1}: ${mapUid}`)
+                
+                // Get map information to get the track name and author
+                let trackName = `Weekly Short ${i + 1}`
+                let authorName = 'Unknown Author'
+                let authorAccountId = 'unknown'
+                
+                try {
+                    // Try to get map info from Nadeo API
+                    const mapResponse = await fetch(`https://live-services.trackmania.nadeo.live/api/token/map/${mapUid}`, {
+                        headers: {
+                            'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
+                            'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: taylordouglashutchens@outlook.com'
+                        }
+                    })
+                    
+                    if (mapResponse.ok) {
+                        const mapData = await mapResponse.json()
+                        trackName = mapData.name || trackName
+                        authorAccountId = mapData.author || authorAccountId
+                        console.log(`Found map info: ${trackName} by ${authorAccountId}`)
+                    }
+                } catch (mapError) {
+                    console.log(`Could not get map info for ${mapUid}:`, mapError.message)
+                }
+                
+                // Get top player times for this track (attempt Montana first, fallback to World)
+                console.log(`Getting top times for track: ${trackName}`)
+                const topTimesResult = await getMontanaTopPlayerTimes(mapUid)
+                
+                // Add a note to the embed about the ranking scope
+                const isWorldRanking = topTimesResult.includes('World rankings') || !topTimesResult.includes('Montana')
+                const rankingNote = isWorldRanking ? ' (World Rankings)' : ' (Montana Group)'
+                const modifiedTrackName = trackName + rankingNote
+                
+                const embed = embedFormatter(modifiedTrackName, mapUid, topTimesResult, authorName, authorAccountId)
+                results.push(embed)
+                console.log(`Successfully processed track ${i + 1}: ${trackName}`)
+                
+            } catch (trackError) {
+                console.error(`Error processing track ${i + 1}:`, trackError.message)
+                continue
+            }
+        }
+        
+        if (results.length === 0) {
+            throw new Error('No tracks were successfully processed')
+        }
+        
+        console.log(`Successfully processed ${results.length} weekly shorts tracks`)
+        
+    } catch (error) {
+        console.error('Error in getWeeklyShorts:', error.message)
+        
+        // Provide a user-friendly error message
+        results.push({
+            title: '❌ Weekly Shorts Error',
+            description: `Unable to fetch Weekly Shorts data from the API.
+
+**Error:** ${error.message}
+
+**Possible causes:**
+- Trackmania Live Services API is temporarily down
+- Authentication issues
+- Network connectivity problems
+
+**Alternative:** Check Weekly Shorts manually at: https://trackmania.io/#/campaigns/weekly
+
+Please try again later!`,
+            color: 0xff0000,
+            footer: { text: 'OpenPlanet/Nadeo API error' }
+        })
     }
     return results
 }
@@ -154,5 +378,6 @@ module.exports = {
     getCampaignRecords,
     getTotdRecords,
     getTopPlayerScores,
-    getWeeklyShorts
+    getWeeklyShorts,
+    getMontanaTopPlayerTimes
 };
