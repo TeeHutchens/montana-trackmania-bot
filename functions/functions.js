@@ -15,23 +15,23 @@ const mapCache = new MapCache();
 function cleanTrackName(name) {
     if (!name) return 'Unknown Track'
     
-    // Remove Trackmania color codes: $XXX or $XXXX where X is hex digit
     let cleaned = name
     
-    // First pass: remove color codes that are followed by space or dash
-    cleaned = cleaned.replace(/\$[0-9A-Fa-f]{3,4}[\s-]+/g, '')
+    // Remove Trackmania color codes
+    // Based on analysis, Trackmania uses 3-digit color codes ($XXX)
+    // Some apparent 4-digit codes are actually 3-digit + text
     
-    // Second pass: handle color codes attached to capital letters (word boundaries)
-    cleaned = cleaned.replace(/\$[0-9A-Fa-f]{3,4}(?=[A-Z])/g, ' ')
+    // Remove all $ followed by exactly 3 hex digits
+    cleaned = cleaned.replace(/\$[0-9A-Fa-f]{3}/g, '')
     
-    // Third pass: remove remaining color codes
-    cleaned = cleaned.replace(/\$[0-9A-Fa-f]{3,4}/g, '')
+    // Handle malformed codes like $o (single character after $)
+    cleaned = cleaned.replace(/\$[a-zA-Z0-9]/g, '')
     
-    // Clean up multiple spaces and trim
+    // Clean up multiple spaces but preserve dashes
     cleaned = cleaned.replace(/\s+/g, ' ').trim()
     
-    // If the result is empty, return Unknown Track
-    if (!cleaned) {
+    // If the result is empty or just whitespace, return Unknown Track
+    if (!cleaned || cleaned.length === 0) {
         return 'Unknown Track'
     }
     
@@ -549,5 +549,6 @@ module.exports = {
     getTopPlayerScores,
     getWeeklyShorts,
     getMontanaTopPlayerTimes,
-    getCachedMapInfo
+    getCachedMapInfo,
+    cleanTrackName
 };
