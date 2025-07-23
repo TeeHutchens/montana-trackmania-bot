@@ -3,7 +3,13 @@ const { getTopPlayersGroup, getTopPlayersMap, getMaps, getMapRecords, getProfile
 const { APILogin } = require("../functions/authentication.js")
 const { embedFormatter, montanaEmbedFormatter, recordPlacingFormatter, scoreFormatter } = require("../helper/helper.js")
 const fetch = require('node-fetch')
+const PlayerCache = require('../cache/PlayerCache.js')
+const MapCache = require('../cache/MapCache.js')
 require('dotenv').config()
+
+// Initialize caches
+const playerCache = new PlayerCache();
+const mapCache = new MapCache();
 
 // Function to clean track names by removing color codes
 function cleanTrackName(name) {
@@ -32,13 +38,73 @@ function cleanTrackName(name) {
     return cleaned
 }
 
-// Function to get author name from account ID
+// Function to get multiple player names with caching
+async function getCachedPlayerNames(accountIds, apiCredentials) {
+    const { cached, missing } = playerCache.getMultiplePlayerNames(accountIds);
+    
+    console.log(`📦 Found ${Object.keys(cached).length} cached player names, need to fetch ${missing.length}`);
+    
+    // If we have all names cached, return them
+    if (missing.length === 0) {
+        return cached;
+    }
+    
+    // Fetch missing player names
+    const newPlayerNames = {};
+    
+    try {
+        if (missing.length > 0) {
+            console.log(`🔍 Fetching ${missing.length} missing player profiles...`);
+            
+            const profiles = await getProfiles(apiCredentials[1].accessToken, missing);
+            if (profiles && profiles.length > 0) {
+                const profileIds = profiles.map(p => p.uid);
+                const profileIdAccountIdMap = new Map();
+                
+                for (const profile of profiles) {
+                    profileIdAccountIdMap.set(profile.uid, profile.accountId);
+                }
+                
+                const detailedProfiles = await getProfilesById(apiCredentials[0].ticket, profileIds);
+                
+                if (detailedProfiles && detailedProfiles.profiles) {
+                    for (const profile of detailedProfiles.profiles) {
+                        const accountId = profileIdAccountIdMap.get(profile.profileId);
+                        if (accountId) {
+                            const playerName = profile.nameOnPlatform || `Player_${accountId.substring(0, 8)}`;
+                            newPlayerNames[accountId] = playerName;
+                        }
+                    }
+                }
+            }
+            
+            // Cache the new names
+            if (Object.keys(newPlayerNames).length > 0) {
+                playerCache.setMultiplePlayerNames(newPlayerNames);
+                console.log(`💾 Cached ${Object.keys(newPlayerNames).length} new player names`);
+            }
+        }
+    } catch (error) {
+        console.log('Error fetching missing player names:', error.message);
+    }
+    
+    // Combine cached and newly fetched names
+    return { ...cached, ...newPlayerNames };
+}
 async function getAuthorName(authorAccountId, apiCredentials) {
     if (!authorAccountId || authorAccountId === 'unknown') {
         return 'Unknown Author'
     }
     
+    // Check cache first
+    const cachedName = playerCache.getPlayerName(authorAccountId);
+    if (cachedName) {
+        console.log(`📦 Using cached author name for ${authorAccountId}: ${cachedName}`);
+        return cachedName;
+    }
+    
     try {
+        console.log(`🔍 Fetching author name for ${authorAccountId}...`);
         // Try to get author info from profiles API
         const profiles = await getProfiles(apiCredentials[1].accessToken, [authorAccountId])
         if (profiles && profiles.length > 0) {
@@ -47,7 +113,14 @@ async function getAuthorName(authorAccountId, apiCredentials) {
             
             if (detailedProfiles && detailedProfiles.profiles && detailedProfiles.profiles.length > 0) {
                 const authorProfile = detailedProfiles.profiles[0]
-                return authorProfile.nameOnPlatform || 'Unknown Author'
+                const authorName = authorProfile.nameOnPlatform || 'Unknown Author'
+                
+                // Cache the result
+                playerCache.setPlayerName(authorAccountId, authorName);
+                playerCache.saveCache();
+                
+                console.log(`💾 Cached author name: ${authorAccountId} → ${authorName}`);
+                return authorName;
             }
         }
     } catch (error) {
@@ -55,6 +128,61 @@ async function getAuthorName(authorAccountId, apiCredentials) {
     }
     
     return 'Unknown Author'
+}
+
+// Cached map information fetching function
+async function getCachedMapInfo(mapUid, apiCredentials) {
+    // Check cache first
+    const cachedMapData = mapCache.getMapData(mapUid);
+    if (cachedMapData) {
+        console.log(`🗺️ Using cached map info for ${mapUid}: ${cachedMapData.name} by ${cachedMapData.authorName}`);
+        return cachedMapData;
+    }
+    
+    console.log(`🔍 Fetching map info for ${mapUid}...`);
+    
+    // Default values
+    let mapData = {
+        name: `Map ${mapUid.substring(0, 8)}...`,
+        author: 'unknown',
+        authorName: 'Unknown Author'
+    };
+    
+    try {
+        // Fetch map information from Nadeo API
+        const mapResponse = await fetch(`https://live-services.trackmania.nadeo.live/api/token/map/${mapUid}`, {
+            headers: {
+                'Authorization': `nadeo_v1 t=${apiCredentials[2].accessToken}`,
+                'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: taylordouglashutchens@outlook.com'
+            }
+        });
+        
+        if (mapResponse.ok) {
+            const rawMapData = await mapResponse.json();
+            
+            // Clean the track name to remove hex color codes
+            mapData.name = cleanTrackName(rawMapData.name) || mapData.name;
+            mapData.author = rawMapData.author || mapData.author;
+            
+            // Get the actual author name if we have a valid author ID
+            if (mapData.author !== 'unknown') {
+                mapData.authorName = await getAuthorName(mapData.author, apiCredentials);
+            }
+            
+            console.log(`💾 Caching map info: ${mapData.name} by ${mapData.authorName} (${mapData.author})`);
+            
+            // Cache the result for 45 minutes
+            mapCache.setMapData(mapUid, mapData);
+            
+            return mapData;
+        } else {
+            console.log(`Map API returned ${mapResponse.status} for ${mapUid}`);
+        }
+    } catch (error) {
+        console.log(`Could not get map info for ${mapUid}:`, error.message);
+    }
+    
+    return mapData;
 }
 
 TMIOclient.setUserAgent('state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: taylordouglashutchens@outlook.com or @TeeHutchens on Discord')
@@ -67,8 +195,8 @@ async function getTopPlayerTimes(mapUid) {
         console.log(`Getting top players for map: ${mapUid}`)
         const topPlayersResult = await getTopPlayersMap(APICredentials[3], mapUid)
         
-        const map = await getMaps(APICredentials[1].accessToken, [mapUid])
-        const mapId = map[0]['mapId']
+        const worldMapInfo = await getMaps(APICredentials[1].accessToken, [mapUid])
+        const worldMapId = worldMapInfo[0]['mapId']
         
         // Get the top players list (usually at index 0 for World rankings)
         let playerList = null
@@ -90,31 +218,30 @@ async function getTopPlayerTimes(mapUid) {
         }
 
         console.log(`Getting profiles for ${accountIds.length} players...`)
-        const playerProfiles = await getProfiles(APICredentials[1].accessToken, accountIds)
-        const profileIdAccountIdMap = new Map();
-        const profileIds = []
-        for (const i in playerProfiles) {
-            let uid = playerProfiles[i]['uid']
-            let accountId = playerProfiles[i]['accountId']
-            profileIds.push(uid)
-            profileIdAccountIdMap.set(uid, accountId)
-        }
-
-        console.log(`Getting detailed profiles...`)
-        const profiles = await getProfilesById(APICredentials[0].ticket, profileIds)
+        
+        // Use cached player names
+        const playerNames = await getCachedPlayerNames(accountIds, APICredentials);
+        
+        const regularMapInfo = await getMaps(APICredentials[1].accessToken, [mapUid])
+        const regularMapId = regularMapInfo[0]['mapId']
+        
+        console.log(`Getting detailed profiles and records...`)
         const playerTimeMap = new Map()
         
-        for (const i in profiles['profiles']) {
+        // Get records for each player
+        for (const accountId of accountIds) {
             try {
-                let { nameOnPlatform, profileId } = profiles['profiles'][i]
-                let record = await getMapRecords(APICredentials[1].accessToken, profileIdAccountIdMap.get(profileId), mapId)
+                const playerName = playerNames[accountId];
+                if (!playerName) continue;
+                
+                                const record = await getMapRecords(APICredentials[1].accessToken, accountId, regularMapId);
                 if (record && record.length > 0) {
-                    let time = record[0]['recordScore']['time']
-                    playerTimeMap.set(nameOnPlatform, time)
+                    const time = record[0]['recordScore']['time'];
+                    playerTimeMap.set(playerName, time);
                 }
             } catch (recordError) {
-                console.log(`Error getting record for player:`, recordError.message)
-                continue
+                console.log(`Error getting record for player ${accountId}:`, recordError.message);
+                continue;
             }
         }
         
@@ -171,39 +298,35 @@ async function getMontanaTopPlayerTimes(mapUid) {
         console.log(`🎯 Found ${montanaZone.top.length} Montana players!`)
 
         // Get map info for record processing
-        const map = await getMaps(APICredentials[1].accessToken, [mapUid])
-        const mapId = map[0]['mapId']
+        const montanaMapInfo = await getMaps(APICredentials[1].accessToken, [mapUid])
+        const montanaMapId = montanaMapInfo[0]['mapId']
 
         // Process Montana players
         const montanaPlayers = montanaZone.top;
         const accountIds = montanaPlayers.map(player => player.accountId);
 
         console.log(`Getting profiles for ${accountIds.length} Montana players...`)
-        const playerProfiles = await getProfiles(APICredentials[1].accessToken, accountIds)
-        const profileIdAccountIdMap = new Map();
-        const profileIds = []
-        for (const i in playerProfiles) {
-            let uid = playerProfiles[i]['uid']
-            let accountId = playerProfiles[i]['accountId']
-            profileIds.push(uid)
-            profileIdAccountIdMap.set(uid, accountId)
-        }
+        
+        // Use cached player names
+        const playerNames = await getCachedPlayerNames(accountIds, APICredentials);
 
-        console.log(`Getting detailed Montana player profiles...`)
-        const profiles = await getProfilesById(APICredentials[0].ticket, profileIds)
+        console.log(`Getting detailed Montana player profiles and records...`)
         const playerTimeMap = new Map()
         
-        for (const i in profiles['profiles']) {
+        // Get records for each Montana player
+        for (const accountId of accountIds) {
             try {
-                let { nameOnPlatform, profileId } = profiles['profiles'][i]
-                let record = await getMapRecords(APICredentials[1].accessToken, profileIdAccountIdMap.get(profileId), mapId)
+                const playerName = playerNames[accountId];
+                if (!playerName) continue;
+                
+                const record = await getMapRecords(APICredentials[1].accessToken, accountId, montanaMapId);
                 if (record && record.length > 0) {
-                    let time = record[0]['recordScore']['time']
-                    playerTimeMap.set(nameOnPlatform, time)
+                    const time = record[0]['recordScore']['time'];
+                    playerTimeMap.set(playerName, time);
                 }
             } catch (recordError) {
-                console.log(`Error getting record for Montana player:`, recordError.message)
-                continue
+                console.log(`Error getting record for Montana player ${accountId}:`, recordError.message);
+                continue;
             }
         }
         
@@ -304,36 +427,13 @@ async function getWeeklyShorts() {
                 
                 console.log(`Processing track ${i + 1}: ${mapUid}`)
                 
-                // Get map information to get the track name and author
-                let trackName = `Weekly Short ${i + 1}`
-                let authorName = 'Unknown Author'
-                let authorAccountId = 'unknown'
+                // Get cached map information (includes track name and author)
+                const mapInfo = await getCachedMapInfo(mapUid, APICredentials);
+                const trackName = mapInfo.name;
+                const authorName = mapInfo.authorName;
+                const authorAccountId = mapInfo.author;
                 
-                try {
-                    // Try to get map info from Nadeo API
-                    const mapResponse = await fetch(`https://live-services.trackmania.nadeo.live/api/token/map/${mapUid}`, {
-                        headers: {
-                            'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-                            'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: taylerdouglashutchens@outlook.com'
-                        }
-                    })
-                    
-                    if (mapResponse.ok) {
-                        const mapData = await mapResponse.json()
-                        // Clean the track name to remove hex color codes
-                        trackName = cleanTrackName(mapData.name) || trackName
-                        authorAccountId = mapData.author || authorAccountId
-                        
-                        // Get the actual author name
-                        if (authorAccountId !== 'unknown') {
-                            authorName = await getAuthorName(authorAccountId, APICredentials)
-                        }
-                        
-                        console.log(`Found map info: ${trackName} by ${authorName} (${authorAccountId})`)
-                    }
-                } catch (mapError) {
-                    console.log(`Could not get map info for ${mapUid}:`, mapError.message)
-                }
+                console.log(`Using map info: ${trackName} by ${authorName} (${authorAccountId})`);
                 
                 // Get top player times for this track (attempt Montana first, fallback to World)
                 console.log(`Getting top times for track: ${trackName}`)
@@ -448,5 +548,6 @@ module.exports = {
     getTotdRecords,
     getTopPlayerScores,
     getWeeklyShorts,
-    getMontanaTopPlayerTimes
+    getMontanaTopPlayerTimes,
+    getCachedMapInfo
 };
