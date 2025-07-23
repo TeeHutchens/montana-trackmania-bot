@@ -1,4 +1,4 @@
-const { getMontanaTopPlayerTimes } = require('./functions/functions.js');
+const { getMontanaTopPlayerTimes } = require('../functions/functions.js');
 
 async function testBotMontanaFunction() {
     console.log('🧪 Testing the bot\'s Montana function...');

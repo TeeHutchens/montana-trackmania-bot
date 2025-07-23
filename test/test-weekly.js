@@ -1,4 +1,4 @@
-const { getWeeklyShorts } = require('./functions/functions.js');
+const { getWeeklyShorts } = require('../functions/functions.js');
 require('dotenv').config();
 
 async function testWeeklyShorts() {

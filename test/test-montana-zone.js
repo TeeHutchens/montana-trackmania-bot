@@ -1,4 +1,4 @@
-const { APILogin } = require('./functions/authentication.js');
+const { APILogin } = require('../functions/authentication.js');
 const { getTopPlayersMap } = require('trackmania-api-node');
 const fetch = require('node-fetch');
 require('dotenv').config();

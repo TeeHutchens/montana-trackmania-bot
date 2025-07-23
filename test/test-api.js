@@ -1,5 +1,5 @@
 const TMIO = require('trackmania.io');
-const { APILogin } = require('./functions/authentication.js');
+const { APILogin } = require('../functions/authentication.js');
 const fetch = require('node-fetch');
 require('dotenv').config();
 

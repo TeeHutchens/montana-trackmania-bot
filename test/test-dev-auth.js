@@ -1,4 +1,4 @@
-const { APILogin } = require('./functions/authentication.js');
+const { APILogin } = require('../functions/authentication.js');
 require('dotenv').config();
 
 async function testDevAuth() {

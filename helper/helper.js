@@ -12,6 +12,10 @@ function recordPlacingFormatter(playerTimeMapSort) {
             emoji = ':second_place:'
         } else if (count == 3) {
             emoji = ':third_place:'
+        } else if (count == 4) {
+            emoji = ':medal:'
+        } else if (count == 5) {
+            emoji = ':medal:'
         } else { emoji = '	  ' }
 
         result += `${emoji} ${Formatters.bold(key)} ${timeFormatter(value)}\n`
@@ -39,18 +43,42 @@ function scoreFormatter(dictionary) {
 }
 
 function timeFormatter(value) {
+    // Handle special "No Time" value
+    if (value === 4294967295 || value === -1) {
+        return 'SECRET'
+    }
+    
+    // Handle invalid or zero values
+    if (!value || value <= 0) {
+        return 'SECRET'
+    }
+    
     const valueToString = value.toString()
+    
+    // Handle very large values that might be corrupted
+    if (valueToString.length > 8) {
+        return 'SECRET'
+    }
+    
     const lastThree = valueToString.substring(valueToString.length - 3)
-    let firstHalf = Number(valueToString.substring(0, 2))
+    let firstHalf = Number(valueToString.substring(0, valueToString.length - 3))
+    
+    if (isNaN(firstHalf) || firstHalf < 0) {
+        return 'SECRET'
+    }
+    
     const minutes = Math.floor(firstHalf / 60).toString()
     const seconds = (firstHalf - minutes * 60).toString()
-    result = ''
+    let result = ''
+    
     if (minutes == '0') {
         result = `${seconds}.${lastThree}`
     } else {
         if (seconds < 10) {
             result = `${minutes}:0${seconds}.${lastThree}`
-        } else { result = `${minutes}:${seconds}.${lastThree}` }
+        } else { 
+            result = `${minutes}:${seconds}.${lastThree}` 
+        }
     }
     return result
 }
@@ -66,6 +94,22 @@ function embedFormatter(trackName, trackUid, value, authorName, authorAccountId)
             { name: 'Track Leaders', value: value },
         )
         .setFooter('This bot is currently in active development.');
+
+    return replyEmbed
+}
+
+function montanaEmbedFormatter(trackName, trackUid, value, authorName, authorAccountId) {
+    // Montana-specific custom formatting
+    const replyEmbed = new MessageEmbed()
+        .setColor('#4A90E2') // Montana blue color
+        .setTitle(`🏔️ ${trackName} - Montana Leaderboard`)
+        .setURL(`https://trackmania.io/#/leaderboard/${trackUid}`)
+        .setAuthor(`Created by ${authorName}`, 'https://trackmania.io/img/square.png', `https://trackmania.io/#/player/${authorAccountId}`)
+        .setThumbnail('https://trackmania.io/img/square.png')
+        .addFields(
+            { name: '🏆 Montana Top Players', value: value || 'No times recorded yet' },
+        )
+        .setFooter('🏔️ Montana Trackmania Community | Weekly Shorts');
 
     return replyEmbed
 }
@@ -162,5 +206,12 @@ function ordinal_suffix_of(i) {
 }
 
 module.exports = {
-    embedFormatter, timeFormatter, embedScoresFormatter, getPlayerProfile, recordPlacingFormatter, playerProfileFormatter, scoreFormatter
+    embedFormatter, 
+    montanaEmbedFormatter,
+    timeFormatter, 
+    embedScoresFormatter, 
+    getPlayerProfile, 
+    recordPlacingFormatter, 
+    playerProfileFormatter, 
+    scoreFormatter
 };

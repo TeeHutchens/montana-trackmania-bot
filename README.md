@@ -1,63 +1,235 @@
-# **State Trackmania Bot discord.js**
+# **Montana Trackmania Discord Bot**
 
-This repository contains a small Discord bot built with **discord.js**. The bot interacts with the Trackmania.io API to display player stats and leaderboards right inside a Discord server. It exposes a set of slash commands that query campaigns, Track of the Day information and player profiles. All commands are located in the `commands/` folder and are automatically registered using `deploy-commands.js`.
+A specialized Discord bot built with **discord.js** that displays Montana-specific Trackmania leaderboards and player statistics. This bot focuses on the Montana Trackmania community, providing Weekly Shorts leaderboards with Montana players prioritized, while falling back to world rankings when regional data is unavailable.
 
-The bot keeps no persistent state; every command performs live requests against the Trackmania API. Authentication to the Trackmania services is handled in `functions/authentication.js`.
+## 🏔️ **Features**
 
-## Getting started
+### **Montana-Focused Leaderboards**
+- **Regional Priority**: Shows Montana players first when available
+- **Fallback System**: Displays world leaderboards when no Montana players are found
+- **Custom Theming**: Montana blue color scheme and mountain emojis
+- **Smart Formatting**: Proper ranking with 🥇🥈🥉4️⃣5️⃣ emojis
 
-If you want to quickly get this bot up and running on your environment:
+### **Time Display**
+- **Real Times**: Displays actual completion times (e.g., "35.420", "1:05.789")
+- **SECRET Status**: Shows "SECRET" for players who haven't completed the map
+- **Smart Formatting**: Handles minutes:seconds.milliseconds format
 
-1. Begin to clone this repository to your environment.
+### **Authentication System**
+- **Multi-Level Auth**: Ubisoft → Nadeo → Trackmania Live Services
+- **Zone-Based Access**: Requires Montana zone permissions
+- **Secure Credentials**: Base64 encoded authentication
 
-```
-git clone https://github.com/allanjacob/state-trackmania-bot.git
-```
-Install the following:
+## 🚀 **Getting Started**
 
-```
-npm install discord.js
+### **Prerequisites**
+- Node.js (v16 or higher)
+- Discord Developer Application
+- Ubisoft/Trackmania account with Montana zone access
 
-npm install trackmania-api-node
+### **Installation**
 
-npm install trackmania.io
-
-npm install dotenv
-```
-
-6. Create a file named `.env` in the project home directory (same directory as `index.js`). Copy and paste the contents below to your `.env` file. You will need to fill in following sequence of API keys and tokens:
-
-```
-DISCORD_TOKEN =
-CLIENT_ID =
-GUILD_ID =
-UBI_USERNAME =
-UBI_PASSWORD =
-GROUP_UID =
-ALLOWED_COMMANDS =
+1. **Clone the repository**
+```bash
+git clone https://github.com/TeeHutchens/montana-trackmania-bot.git
+cd montana-trackmania-bot
 ```
 
-- DISCORD_TOKEN: The discord bot token. This token is located under the `Bot` section in your selected App in the Discord Developer Portal.
-- CLIENT_ID:The discord bot Application ID. This is found on the `General Information` page located under your discord bot on the Discover Developer portal.
-- GUILD_ID: This is the ID of your Discord server.
-- UBI_USERNAME: This is the email address used to login into Ubisoft.
-- UBI_PASSWORD: Password used to log into Ubisoft.
-- GROUP_UID: This is the group ID for your trackmania state or campaign group. To fetch this information, you might need to use the [Http inspector](https://openplanet.dev/plugin/httpinspect) plugin created by [Miss](https://github.com/sponsors/codecat) to inspect your incoming and outgoing packets to get your group ID.
-- ALLOWED_COMMANDS: Comma separated list of slash commands that the bot should register. Defaults to `weeklyshorts` if not set.
-
-7. Run the following command to start running the project:
-
+2. **Install dependencies**
+```bash
+npm install discord.js trackmania-api-node trackmania.io dotenv
 ```
+
+3. **Environment Configuration**
+Create a `.env` file in the project root:
+
+```env
+# Discord Configuration
+DISCORD_TOKEN=your_discord_bot_token
+CLIENT_ID=your_discord_application_id
+GUILD_ID=your_discord_server_id
+
+# Trackmania Authentication
+UBI_USERNAME=your_ubisoft_email
+UBI_PASSWORD=your_ubisoft_password
+
+# Montana Configuration
+GROUP_UID=3022e37a-7e13-11e8-8060-e284abfd2bc4
+
+# Bot Configuration
+ALLOWED_COMMANDS=weeklyshorts
+```
+
+### **Required Permissions**
+Your Ubisoft account must have:
+- **Trackmania access**: Valid game ownership
+- **Montana zone access**: Purchase required for regional leaderboards
+- **Live Services access**: Enabled through account settings
+
+4. **Deploy commands and start the bot**
+```bash
+node deploy-commands.js
 node index.js
 ```
 
-## Commands
+## 🎮 **How It Works**
 
-| Command            | Description                                                                          | Example                                     |
-| ------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
-| **currentleaders** | Get the current score leaders for your state for the current campaign                | /currentleaders                             |
-| **currentrecords** | Get the top 5 records for a particular track in the current campaign                 | /currentrecords 15                          |
-| **playerprofile**  | Get a player's profile                                                               | /playerprofile Wirtual                      |
-| **records**        | Get records for a particular track in any campaign (this command does not work well) | /records campaign:summer 2020 tracknumber:1 |
-| **totdrecords**    | Get the top 5 records for the Track of the Day                                       | /totdrecords                                |
-| **weeklyshorts**   | Get embeds for all Weekly Short maps with the top 5 players    | /weeklyshorts                               |
+### **Authentication Flow**
+```
+1. Ubisoft Login (email/password)
+   ↓
+2. Nadeo Services Authentication
+   ↓
+3. Trackmania Live Services Access
+   ↓
+4. Zone-Based API Permissions
+```
+
+### **Data Retrieval Process**
+```
+1. Fetch Weekly Shorts maps from OpenPlanet API
+   ↓
+2. Get zone-based leaderboards (Montana: 3022e37a-7e13-11e8-8060-e284abfd2bc4)
+   ↓
+3. Extract Montana player account IDs
+   ↓
+4. Fetch player profiles and display names
+   ↓
+5. Format and display in Discord embed
+```
+
+### **API Endpoints Used**
+- **Weekly Shorts**: `https://openplanet.dev/plugin/weeklyshorts/maps`
+- **Zone Leaderboards**: Nadeo Live Services `/api/token/leaderboard/group/...`
+- **Player Profiles**: Nadeo Core Services `/accounts/...`
+
+## 📋 **Commands**
+
+| Command | Description | Usage | Output |
+|---------|-------------|-------|--------|
+| `/weeklyshorts` | Display Montana Weekly Shorts leaderboards | `/weeklyshorts` | Montana-themed embeds with regional players |
+
+### **Command Behavior**
+- **Montana Players Found**: Shows Montana-specific leaderboard with blue theme
+- **No Montana Players**: Falls back to world leaderboard with standard theme
+- **Mixed Results**: Prioritizes Montana players, supplements with world rankings
+
+## 🎨 **Formatting Examples**
+
+### **Montana Leaderboard**
+```
+🏔️ Red Driveby - Montana Leaderboard
+🏆 Montana Top Players
+🥇 **Klint.TM** 35.420
+🥈 **FrostyDogTM** SECRET
+🥉 **Tee.TM** 1:05.789
+4️⃣ **ROCKRIVER12** SECRET
+5️⃣ **STRGrim** 2:15.999
+```
+
+### **Time Formatting**
+- **Completed Times**: `35.420`, `1:05.789`, `2:15.999`
+- **No Completion**: `SECRET`
+- **Invalid Data**: `SECRET`
+
+## 🛠️ **Technical Architecture**
+
+### **Project Structure**
+```
+montana-trackmania-bot/
+├── commands/
+│   └── weeklyshorts.js          # Main slash command
+├── functions/
+│   ├── authentication.js        # Multi-level auth system
+│   └── functions.js             # Core bot functionality
+├── helper/
+│   └── helper.js                # Formatting and utilities
+├── deploy-commands.js           # Command registration
+├── index.js                     # Bot entry point
+└── .env                         # Environment configuration
+```
+
+### **Key Functions**
+
+#### **`getMontanaTopPlayerTimes(mapUid)`**
+- Fetches Montana-specific leaderboard data
+- Handles authentication and zone filtering
+- Returns formatted player rankings
+
+#### **`timeFormatter(value)`**
+- Converts Trackmania time values to readable format
+- Handles special cases (4294967295 = "SECRET")
+- Formats as MM:SS.mmm or SS.mmm
+
+#### **`recordPlacingFormatter(playerMap)`**
+- Creates Discord-formatted leaderboard strings
+- Assigns ranking emojis (🥇🥈🥉4️⃣5️⃣)
+- Handles player name bolding
+
+#### **`montanaEmbedFormatter(...)`**
+- Creates Montana-themed Discord embeds
+- Uses Montana blue color (#4A90E2)
+- Includes mountain emojis and regional branding
+
+## 🔧 **Configuration Options**
+
+### **Environment Variables**
+- **`GROUP_UID`**: Montana zone identifier (required for regional data)
+- **`ALLOWED_COMMANDS`**: Comma-separated list of enabled commands
+- **Authentication**: Ubisoft credentials for API access
+
+### **Customization**
+- **Colors**: Modify embed colors in `helper.js`
+- **Emojis**: Update ranking symbols in `recordPlacingFormatter`
+- **Themes**: Adjust titles and footers in embed formatters
+
+## 🐛 **Troubleshooting**
+
+### **Common Issues**
+
+**"No Montana players found"**
+- Verify `GROUP_UID` is correct for Montana
+- Check if account has Montana zone access
+- Ensure authentication is working
+
+**"Authentication failed"**
+- Verify Ubisoft credentials in `.env`
+- Check if account has Trackmania access
+- Ensure no special characters in password
+
+**"SECRET" showing for all players**
+- This is normal for players who haven't completed the map
+- Real completion times will show as formatted times
+
+### **Debug Commands**
+```bash
+# Test time formatting
+node test-real-times.js
+
+# Test formatter functions
+node test-formatter.js
+
+# Preview Discord output
+node final-discord-preview.js
+```
+
+## 🎯 **Montana Zone Information**
+- **Zone ID**: `3022e37a-7e13-11e8-8060-e284abfd2bc4`
+- **Region**: Montana, United States
+- **Access**: Requires purchase through Trackmania account
+- **Coverage**: State-wide Trackmania community
+
+## 📈 **Future Enhancements**
+- Additional Montana-specific commands
+- Player statistics tracking
+- Custom leaderboard categories
+- Integration with Montana community events
+
+## 🤝 **Contributing**
+This bot is specifically designed for the Montana Trackmania community. For contributions or modifications, please consider the regional focus and community needs.
+
+## 📄 **License**
+This project is a community-driven tool for the Montana Trackmania players.
+
+---
+**🏔️ Big Sky, Fast Times - Montana Trackmania Community**

@@ -1,8 +1,9 @@
 const TMIO = require('trackmania.io'), TMIOclient = new TMIO.Client();
 const { getTopPlayersGroup, getTopPlayersMap, getMaps, getMapRecords, getProfiles, getProfilesById } = require('trackmania-api-node')
 const { APILogin } = require("../functions/authentication.js")
-const { embedFormatter, recordPlacingFormatter, scoreFormatter } = require("../helper/helper.js")
+const { embedFormatter, montanaEmbedFormatter, recordPlacingFormatter, scoreFormatter } = require("../helper/helper.js")
 const fetch = require('node-fetch')
+require('dotenv').config()
 
 TMIOclient.setUserAgent('state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: taylordouglashutchens@outlook.com or @TeeHutchens on Discord')
 
@@ -279,12 +280,21 @@ async function getWeeklyShorts() {
                 console.log(`Getting top times for track: ${trackName}`)
                 const topTimesResult = await getMontanaTopPlayerTimes(mapUid)
                 
-                // Add a note to the embed about the ranking scope
-                const isWorldRanking = topTimesResult.includes('World rankings') || !topTimesResult.includes('Montana')
-                const rankingNote = isWorldRanking ? ' (World Rankings)' : ' (Montana Group)'
-                const modifiedTrackName = trackName + rankingNote
+                // Choose the appropriate formatter based on ranking scope
+                const isMontanaRanking = topTimesResult.includes('Montana Group')
+                let embed
                 
-                const embed = embedFormatter(modifiedTrackName, mapUid, topTimesResult, authorName, authorAccountId)
+                if (isMontanaRanking) {
+                    // Use Montana-specific formatting - clean up the suffix
+                    const cleanResult = topTimesResult.replace(/\n\n🏔️ \*Montana Group Rankings\*$/, '')
+                    embed = montanaEmbedFormatter(trackName, mapUid, cleanResult, authorName, authorAccountId)
+                } else {
+                    // Use regular formatting for world rankings - clean up the suffix
+                    const cleanResult = topTimesResult.replace(/\n\n🌍 \*World Rankings \(Montana group unavailable\)\*$/, '')
+                    const modifiedTrackName = trackName + ' (World Rankings)'
+                    embed = embedFormatter(modifiedTrackName, mapUid, cleanResult, authorName, authorAccountId)
+                }
+                
                 results.push(embed)
                 console.log(`Successfully processed track ${i + 1}: ${trackName}`)
                 
