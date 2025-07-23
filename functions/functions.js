@@ -17,25 +17,47 @@ function cleanTrackName(name) {
     
     let cleaned = name
     
-    // Remove Trackmania color codes systematically
-    // Priority: Remove realistic patterns first, be conservative about edge cases
+    // Trackmania encodes colored letters in a specific way:
+    // - $o is a reset code (ignore)
+    // - $XXXy means color XXX + letter y 
+    // - $FFFword means color FFF + word "word"
     
-    // Remove valid 3-digit hex color codes (most common and safest)
-    cleaned = cleaned.replace(/\$[0-9A-Fa-f]{3}/g, '')
+    // Strategy: Process each $ code individually
+    cleaned = cleaned.replace(/\$[0-9A-Za-z]+/g, (match) => {
+        // Skip reset codes
+        if (match === '$o') return '';
+        
+        // Check if it's a 3-digit hex code + single letter
+        if (/^\$[0-9A-Fa-f]{3}[A-Za-z]$/.test(match)) {
+            return match.slice(-1); // Return the letter
+        }
+        
+        // Check if it's a 4-character code ending with a letter
+        if (/^\$[0-9a-zA-Z]{3}[A-Za-z]$/.test(match)) {
+            return match.slice(-1); // Return the letter
+        }
+        
+        // Check if it's $o + letter (like $oM)
+        if (/^\$o[A-Za-z]$/.test(match)) {
+            return match.slice(-1); // Return the letter
+        }
+        
+        // If it's longer, it might be a color code + word (like $FFFDriveby)
+        if (match.length > 4) {
+            // Look for pattern: $XXX + word where XXX is 3 hex digits
+            const hexMatch = match.match(/^\$([0-9A-Fa-f]{3})(.+)$/);
+            if (hexMatch) {
+                return hexMatch[2]; // Return the word part
+            }
+        }
+        
+        // Default: remove the code
+        return '';
+    });
     
-    // Remove other 3-character codes that might be invalid but formatted like color codes
-    cleaned = cleaned.replace(/\$[0-9A-Za-z]{3}/g, '')
-    
-    // Remove obvious single-character codes only if they're followed by whitespace or string end
-    // This prevents removing parts of words
-    cleaned = cleaned.replace(/\$[0-9A-Za-z](?=\s|$)/g, '')
-    
-    // Clean up multiple spaces but preserve existing dash formatting
+    // Clean up multiple spaces and normalize spacing around dashes
     cleaned = cleaned.replace(/\s+/g, ' ')
-    
-    // Only add spaces around dashes if they're at the start with numbers (for "1-Name" -> "1 - Name")
-    cleaned = cleaned.replace(/^(\d+)\s*-\s*/g, '$1 - ')
-    
+    cleaned = cleaned.replace(/\s*-\s*/g, ' - ')
     cleaned = cleaned.trim()
     
     // If the result is empty or just whitespace, return Unknown Track
@@ -197,10 +219,13 @@ async function getCachedMapInfo(mapUid, apiCredentials) {
 
 TMIOclient.setUserAgent('state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: taylordouglashutchens@outlook.com or @TeeHutchens on Discord')
 
-async function getTopPlayerTimes(mapUid) {
+async function getTopPlayerTimes(mapUid, APICredentials = null) {
     try {
-        console.log(`Getting API credentials...`)
-        const APICredentials = await APILogin()
+        // Only authenticate if credentials weren't provided
+        if (!APICredentials) {
+            console.log(`Getting API credentials...`)
+            APICredentials = await APILogin()
+        }
 
         console.log(`Getting top players for map: ${mapUid}`)
         const topPlayersResult = await getTopPlayersMap(APICredentials[3], mapUid)
@@ -269,10 +294,15 @@ async function getTopPlayerTimes(mapUid) {
     }
 }
 
-async function getMontanaTopPlayerTimes(mapUid) {
+async function getMontanaTopPlayerTimes(mapUid, APICredentials = null) {
     try {
         console.log(`🏔️ Getting Montana players for map: ${mapUid}`)
-        const APICredentials = await APILogin()
+        
+        // Only authenticate if credentials weren't provided
+        if (!APICredentials) {
+            APICredentials = await APILogin()
+        }
+        
         const montanaZoneId = '3022e37a-7e13-11e8-8060-e284abfd2bc4';
 
         // Use the zone leaderboard API to get Montana-specific rankings
@@ -447,7 +477,7 @@ async function getWeeklyShorts() {
                 
                 // Get top player times for this track (attempt Montana first, fallback to World)
                 console.log(`Getting top times for track: ${trackName}`)
-                const topTimesResult = await getMontanaTopPlayerTimes(mapUid)
+                const topTimesResult = await getMontanaTopPlayerTimes(mapUid, APICredentials)
                 
                 // Choose the appropriate formatter based on ranking scope
                 const isMontanaRanking = topTimesResult.includes('Montana Group')

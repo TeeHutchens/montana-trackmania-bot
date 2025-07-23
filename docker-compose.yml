@@ -1,0 +1,45 @@
+services:
+  montana-trackmania-bot:
+    build: .
+    container_name: montana-trackmania-bot
+    restart: unless-stopped
+    
+    # Environment variables (create a .env file or use environment section)
+    env_file:
+      - .env
+    
+    # Alternative: specify environment variables directly
+    # environment:
+    #   - DISCORD_TOKEN=your_discord_token_here
+    #   - UBI_USERNAME=your_ubisoft_username
+    #   - UBI_PASSWORD=your_ubisoft_password
+    
+    # Mount cache directory as volume for persistence
+    volumes:
+      - ./cache:/app/cache
+      - ./logs:/app/logs  # Optional: for log files
+    
+    # Resource limits for Raspberry Pi 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Optional: network configuration
+    networks:
+      - bot-network
+
+networks:
+  bot-network:
+    driver: bridge

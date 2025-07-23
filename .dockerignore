@@ -1,0 +1,39 @@
+# Node modules (will be installed in container)
+node_modules/
+npm-debug.log
+
+# Git
+.git/
+.gitignore
+
+# Test and debug files
+test/
+debug-*.js
+test-*.js
+manual-extract.js
+analyze-pattern.js
+final-*.js
+find-*.js
+quick-*.js
+
+# Documentation and meta files
+README.md
+LICENSE
+CACHE_IMPLEMENTATION.md
+auth-optimization-analysis.md
+Procfile
+
+# Environment files (will be provided separately)
+.env
+.env.local
+.env.production
+
+# Temporary files
+*.tmp
+*.log
+.DS_Store
+.vscode/
+.idea/
+
+# Cache files that will be created in container
+cache/*.json
