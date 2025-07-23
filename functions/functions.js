@@ -5,6 +5,58 @@ const { embedFormatter, montanaEmbedFormatter, recordPlacingFormatter, scoreForm
 const fetch = require('node-fetch')
 require('dotenv').config()
 
+// Function to clean track names by removing color codes
+function cleanTrackName(name) {
+    if (!name) return 'Unknown Track'
+    
+    // Remove Trackmania color codes: $XXX or $XXXX where X is hex digit
+    let cleaned = name
+    
+    // First pass: remove color codes that are followed by space or dash
+    cleaned = cleaned.replace(/\$[0-9A-Fa-f]{3,4}[\s-]+/g, '')
+    
+    // Second pass: handle color codes attached to capital letters (word boundaries)
+    cleaned = cleaned.replace(/\$[0-9A-Fa-f]{3,4}(?=[A-Z])/g, ' ')
+    
+    // Third pass: remove remaining color codes
+    cleaned = cleaned.replace(/\$[0-9A-Fa-f]{3,4}/g, '')
+    
+    // Clean up multiple spaces and trim
+    cleaned = cleaned.replace(/\s+/g, ' ').trim()
+    
+    // If the result is empty, return Unknown Track
+    if (!cleaned) {
+        return 'Unknown Track'
+    }
+    
+    return cleaned
+}
+
+// Function to get author name from account ID
+async function getAuthorName(authorAccountId, apiCredentials) {
+    if (!authorAccountId || authorAccountId === 'unknown') {
+        return 'Unknown Author'
+    }
+    
+    try {
+        // Try to get author info from profiles API
+        const profiles = await getProfiles(apiCredentials[1].accessToken, [authorAccountId])
+        if (profiles && profiles.length > 0) {
+            const profileIds = profiles.map(p => p.uid)
+            const detailedProfiles = await getProfilesById(apiCredentials[0].ticket, profileIds)
+            
+            if (detailedProfiles && detailedProfiles.profiles && detailedProfiles.profiles.length > 0) {
+                const authorProfile = detailedProfiles.profiles[0]
+                return authorProfile.nameOnPlatform || 'Unknown Author'
+            }
+        }
+    } catch (error) {
+        console.log(`Could not get author name for ${authorAccountId}:`, error.message)
+    }
+    
+    return 'Unknown Author'
+}
+
 TMIOclient.setUserAgent('state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: taylordouglashutchens@outlook.com or @TeeHutchens on Discord')
 
 async function getTopPlayerTimes(mapUid) {
@@ -262,15 +314,22 @@ async function getWeeklyShorts() {
                     const mapResponse = await fetch(`https://live-services.trackmania.nadeo.live/api/token/map/${mapUid}`, {
                         headers: {
                             'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-                            'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: taylordouglashutchens@outlook.com'
+                            'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: taylerdouglashutchens@outlook.com'
                         }
                     })
                     
                     if (mapResponse.ok) {
                         const mapData = await mapResponse.json()
-                        trackName = mapData.name || trackName
+                        // Clean the track name to remove hex color codes
+                        trackName = cleanTrackName(mapData.name) || trackName
                         authorAccountId = mapData.author || authorAccountId
-                        console.log(`Found map info: ${trackName} by ${authorAccountId}`)
+                        
+                        // Get the actual author name
+                        if (authorAccountId !== 'unknown') {
+                            authorName = await getAuthorName(authorAccountId, APICredentials)
+                        }
+                        
+                        console.log(`Found map info: ${trackName} by ${authorName} (${authorAccountId})`)
                     }
                 } catch (mapError) {
                     console.log(`Could not get map info for ${mapUid}:`, mapError.message)
