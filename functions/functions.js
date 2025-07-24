@@ -5,11 +5,13 @@ const { embedFormatter, montanaEmbedFormatter, recordPlacingFormatter, scoreForm
 const fetch = require('node-fetch')
 const PlayerCache = require('../cache/PlayerCache.js')
 const MapCache = require('../cache/MapCache.js')
+const APICache = require('../cache/APICache.js')
 require('dotenv').config()
 
 // Initialize caches
 const playerCache = new PlayerCache();
 const mapCache = new MapCache();
+const apiCache = new APICache();
 
 // Function to clean track names by removing color codes
 function cleanTrackName(name) {
@@ -183,7 +185,7 @@ async function getCachedMapInfo(mapUid, apiCredentials) {
         const mapResponse = await fetch(`https://live-services.trackmania.nadeo.live/api/token/map/${mapUid}`, {
             headers: {
                 'Authorization': `nadeo_v1 t=${apiCredentials[2].accessToken}`,
-                'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: taylordouglashutchens@outlook.com'
+                'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: @TeeHutchy on Discord'
             }
         });
         
@@ -217,7 +219,7 @@ async function getCachedMapInfo(mapUid, apiCredentials) {
     return mapData;
 }
 
-TMIOclient.setUserAgent('state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: taylordouglashutchens@outlook.com or @TeeHutchens on Discord')
+TMIOclient.setUserAgent('state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats |Contact: @TeeHutchy on Discord')
 
 async function getTopPlayerTimes(mapUid, APICredentials = null) {
     try {
@@ -438,7 +440,7 @@ async function getWeeklyShorts() {
         const response = await fetch('https://live-services.trackmania.nadeo.live/api/campaign/weekly-shorts?offset=0&length=1', {
             headers: {
                 'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-                'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: taylordouglashutchens@outlook.com or @TeeHutchens on Discord'
+                'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: @TeeHutchy on Discord'
             }
         })
         
@@ -456,6 +458,8 @@ async function getWeeklyShorts() {
         // Get the latest weekly campaign
         const latestCampaign = weeklyData.campaignList[0]
         console.log(`Processing campaign: ${latestCampaign.name} with ${latestCampaign.playlist.length} tracks`)
+        console.log(`Campaign object keys:`, Object.keys(latestCampaign))
+        console.log(`Campaign ID:`, latestCampaign.id || latestCampaign.seasonUid || latestCampaign.uid || 'Not found')
         
         // Process up to 5 tracks from the campaign
         const tracksToProcess = Math.min(5, latestCampaign.playlist.length)
@@ -583,12 +587,393 @@ async function getTopPlayerScores(groupUId) {
     }
 }
 
+async function getWeeklyShortsCampaignLeaderboard(campaignId, apiCredentials) {
+    try {
+        console.log(`🏆 Getting campaign leaderboard for: ${campaignId}`)
+        
+        const leaderboardUrl = `https://live-services.trackmania.nadeo.live/api/token/leaderboard/group/${campaignId}/top?length=100&onlyWorld=false&offset=0`;
+        
+        const headers = {
+            'Authorization': `nadeo_v1 t=${apiCredentials[2].accessToken}`,
+            'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: @TeeHutchy on Discord'
+        };
+        
+        console.log(`📡 Fetching campaign leaderboard data...`)
+        const response = await fetch(leaderboardUrl, { headers });
+        
+        if (!response.ok) {
+            console.log(`❌ Campaign leaderboard API failed: ${response.status}`)
+            return null;
+        }
+        
+        const data = await response.json();
+        console.log(`✅ Got campaign leaderboard with ${data.tops?.length || 0} zones`)
+        console.log(`🔍 Campaign leaderboard structure:`, JSON.stringify(data, null, 2))
+        
+        // Check if we have any zones at all
+        if (!data.tops || data.tops.length === 0) {
+            console.log(`❌ Campaign leaderboard returned 0 zones - API structure may be different or leaderboard not populated yet`)
+            return null;
+        }
+        
+        // Find Montana players from all zones
+        const montanaPlayers = [];
+        
+        if (data.tops && data.tops.length > 0) {
+            for (const zone of data.tops) {
+                console.log(`🌍 Processing zone: ${zone.zoneName} with ${zone.top?.length || 0} players`)
+                if (zone.top && Array.isArray(zone.top)) {
+                    for (const player of zone.top) {
+                        console.log(`👤 Player: ${player.zoneName} (position: ${player.position}, sp: ${player.sp})`)
+                        // Check if player is from Montana
+                        if (player.zoneName && player.zoneName.toLowerCase().includes('montana')) {
+                            montanaPlayers.push({
+                                accountId: player.accountId,
+                                zoneName: player.zoneName,
+                                position: player.position,
+                                sp: parseInt(player.sp) // Score Points
+                            });
+                        }
+                    }
+                }
+            }
+        } else {
+            console.log(`🔍 No tops array found in response. Response keys:`, Object.keys(data))
+            console.log(`🔍 Full response:`, data)
+        }
+        
+        console.log(`🏔️ Found ${montanaPlayers.length} Montana players in campaign leaderboard`)
+        
+        if (montanaPlayers.length === 0) {
+            console.log(`❌ No Montana players found in campaign leaderboard`)
+            return null;
+        }
+        
+        // Sort by SP (Score Points) descending
+        montanaPlayers.sort((a, b) => b.sp - a.sp);
+        
+        // Get player names for the top Montana players
+        const accountIds = montanaPlayers.slice(0, 5).map(p => p.accountId);
+        const profiles = await getProfilesById(apiCredentials[0].ticket, accountIds);
+        
+        // Create the final result in the expected format
+        const dictionary = {
+            'users': []
+        };
+        
+        for (let i = 0; i < Math.min(5, montanaPlayers.length); i++) {
+            const player = montanaPlayers[i];
+            const profile = profiles.profiles.find(p => p.profileId === player.accountId);
+            const playerName = profile ? profile.nameOnPlatform : `Unknown-${player.accountId}`;
+            
+            dictionary.users.push({
+                nameOnPlatform: playerName,
+                sp: player.sp,
+                position: player.position,
+                zoneName: player.zoneName
+            });
+        }
+        
+        console.log(`🏆 Montana campaign leaderboard:`, dictionary.users.map(u => `${u.nameOnPlatform}: ${u.sp} SP`));
+        
+        return dictionary;
+        
+    } catch (error) {
+        console.log(`❌ Error getting campaign leaderboard:`, error.message);
+        return null;
+    }
+}
+
+async function getWeeklyShortsIndividualMapScoring(currentCampaign, APICredentials, campaignName) {
+    console.log('🏔️ Using individual map scoring fallback method...')
+    
+    // Get Montana players' scores from each map and calculate totals
+    const montanaPlayerScores = new Map() // playerName -> totalScore
+    const processedMaps = []
+    
+    // Process each map in the campaign
+    for (let i = 0; i < currentCampaign.playlist.length; i++) {
+        try {
+            const playlistItem = currentCampaign.playlist[i]
+            const mapUid = playlistItem.mapUid
+            
+            console.log(`📍 Processing map ${i + 1}/${currentCampaign.playlist.length}: ${mapUid}`)
+            
+            // Get cached map information
+            const mapInfo = await getCachedMapInfo(mapUid, APICredentials)
+            const trackName = mapInfo.name
+            processedMaps.push(trackName)
+            
+            console.log(`🏔️ Getting Montana players for map: ${trackName} using getMontanaTopPlayerTimes`)
+            
+            // Get Montana player times for this specific map
+            const montanaResult = await getMontanaTopPlayerTimes(mapUid, APICredentials)
+            
+            if (montanaResult && typeof montanaResult === 'string') {
+                // Parse the formatted result to extract player names and positions
+                const lines = montanaResult.split('\n').filter(line => line.trim())
+                
+                lines.forEach((line, index) => {
+                    // Match emoji format like ":first_place: **PlayerName** time"
+                    const match = line.match(/:(?:first_place|second_place|third_place|medal):\s*\*\*(.+?)\*\*/)
+                    if (match) {
+                        const playerName = match[1].trim()
+                        // Give points based on position: 1st = 100, 2nd = 95, 3rd = 90, 4th = 85, 5th = 80
+                        const points = Math.max(0, 105 - (index + 1) * 5)
+                        
+                        if (montanaPlayerScores.has(playerName)) {
+                            montanaPlayerScores.set(playerName, montanaPlayerScores.get(playerName) + points)
+                        } else {
+                            montanaPlayerScores.set(playerName, points)
+                        }
+                        
+                        console.log(`📊 ${playerName}: +${points} points (position ${index + 1})`)
+                    }
+                })
+                
+                console.log(`✅ Processed ${trackName} - found Montana players`)
+                
+            } else {
+                console.log(`⚠️ No Montana players found for ${trackName}`)
+            }
+            
+        } catch (mapError) {
+            console.log(`❌ Error processing map ${i + 1}:`, mapError.message)
+            continue
+        }
+    }
+    
+    console.log(`📊 Final Montana player scores:`)
+    montanaPlayerScores.forEach((score, playerName) => {
+        console.log(`  ${playerName}: ${score} points`)
+    })
+    
+    // Check if we found any Montana players
+    if (montanaPlayerScores.size === 0) {
+        throw new Error('No Montana players found in any weekly shorts maps')
+    }
+    
+    // Sort players by total score (descending)
+    const sortedPlayers = Array.from(montanaPlayerScores.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5) // Top 5
+    
+    console.log(`🏆 Top 5 Montana players:`)
+    sortedPlayers.forEach(([playerName, totalScore], index) => {
+        console.log(`  ${index + 1}. ${playerName}: ${totalScore} points`)
+    })
+    
+    // Format the result for Discord embed
+    const dictionary = {
+        'users': []
+    }
+    
+    sortedPlayers.forEach(([playerName, totalScore], index) => {
+        dictionary.users.push({
+            nameOnPlatform: playerName,
+            sp: totalScore // Use our calculated points as "SP"
+        })
+    })
+    
+    const formattedResult = scoreFormatter(dictionary)
+    
+    return {
+        success: true,
+        data: formattedResult,
+        campaignName: `${campaignName} (Individual Map Scores)`,
+        playerCount: sortedPlayers.length,
+        fallbackUsed: true
+    }
+}
+
+async function getWeeklyShortsTopFive() {
+    try {
+        console.log('Getting Weekly Shorts top 5 overall scores from Nadeo API...')
+        
+        // Get API credentials for Nadeo services
+        const APICredentials = await APILogin()
+        
+        // First, get the current weekly shorts campaign to get the seasonUid
+        console.log('Fetching current weekly shorts campaign...')
+        const campaignResponse = await fetch('https://live-services.trackmania.nadeo.live/api/campaign/weekly-shorts?offset=0&length=1', {
+            headers: {
+                'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
+                'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: @TeeHutchy on Discord'
+            }
+        })
+        
+        if (!campaignResponse.ok) {
+            throw new Error(`Weekly shorts campaign API returned ${campaignResponse.status}: ${await campaignResponse.text()}`)
+        }
+        
+        const weeklyData = await campaignResponse.json()
+        
+        if (!weeklyData.campaignList || weeklyData.campaignList.length === 0) {
+            throw new Error('No weekly campaigns found in API response')
+        }
+        
+        const currentCampaign = weeklyData.campaignList[0]
+        const campaignName = currentCampaign.name
+        
+        console.log(`Found campaign: ${campaignName}`)
+        console.log(`Campaign object keys:`, Object.keys(currentCampaign))
+        console.log(`Campaign ID:`, currentCampaign.id || currentCampaign.seasonUid || currentCampaign.uid || 'Not found')
+        
+        // Try to get the campaign ID (groupUid) for the leaderboard API
+        const campaignId = currentCampaign.id || currentCampaign.seasonUid || currentCampaign.uid;
+        
+        if (!campaignId) {
+            console.log('❌ Could not find campaign ID, falling back to individual map scores')
+            throw new Error('Campaign ID not found in response')
+        }
+        
+        console.log(`🏔️ Getting Montana players from official campaign leaderboard...`)
+        
+        // Get the official campaign leaderboard with actual SP scores
+        const campaignResult = await getWeeklyShortsCampaignLeaderboard(campaignId, APICredentials)
+        
+        if (!campaignResult || !campaignResult.users || campaignResult.users.length === 0) {
+            console.log('❌ Campaign leaderboard failed or returned no Montana players, falling back to individual map scoring...')
+            
+            // Fallback: Use the individual map approach that was working before
+            return await getWeeklyShortsIndividualMapScoring(currentCampaign, APICredentials, campaignName)
+        }
+        
+        console.log(`🏆 Found ${campaignResult.users.length} Montana players in campaign leaderboard`)
+        
+        // Format the result using the existing scoreFormatter
+        const formattedResult = scoreFormatter(campaignResult)
+        
+        console.log('✅ Successfully retrieved Montana campaign leaderboard with official SP scores')
+        
+        return {
+            success: true,
+            data: formattedResult,
+            campaignName: campaignName,
+            playerCount: campaignResult.users.length
+        }
+        
+    } catch (error) {
+        console.log(`❌ Error in getWeeklyShortsTopFive: ${error.message}`)
+        
+        return {
+            success: false,
+            error: error.message,
+            fallbackMessage: `
+**Error getting Weekly Shorts leaderboard:**
+
+**Error:** ${error.message}
+
+**Possible causes:**
+- Trackmania Live Services API is temporarily down
+- Campaign leaderboard is not yet available
+- Authentication issues
+- Network connectivity problems
+
+**Alternative:** Check Weekly Shorts manually at: https://trackmania.io/#/campaigns/weekly
+
+This bot is now using the official Trackmania campaign leaderboard API to get accurate SP (Score Points) instead of custom scoring.
+            `
+        }
+    }
+}
+
+// Function to get Montana-specific scores using the game API
+async function getMontanaSpecificScores(montanaGroupId) {
+    try {
+        // Check if we have cached API response
+        const cacheKey = `montana_scores_${montanaGroupId}`;
+        const cachedResponse = await apiCache.getAPIResponse(cacheKey);
+        
+        if (cachedResponse) {
+            console.log('🗄️ Using cached Montana leaderboard response');
+            return cachedResponse;
+        }
+
+        console.log('🏔️ Fetching fresh Montana-specific scores from game API...');
+        
+        const APICredentials = await APILogin();
+        const nadeoToken = APICredentials[3];
+        
+        const response = await fetch(`https://live-services.trackmania.nadeo.live/api/token/leaderboard/group/${montanaGroupId}/top`, {
+            headers: {
+                'Authorization': 'nadeo_v1 t=' + nadeoToken,
+                'User-Agent': 'Montana Bot / thutch@itsmemudkip (Discord)'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('📊 API Response received:', JSON.stringify(data, null, 2));
+        
+        // Find Montana zone in the response
+        const montanaZone = data.tops?.find(zone => 
+            zone.zoneName && zone.zoneName.toLowerCase().includes('montana')
+        );
+        
+        if (!montanaZone) {
+            console.log('❌ No Montana zone found in API response');
+            return {
+                success: false,
+                error: 'Montana zone not found in leaderboard data',
+                fallbackMessage: 'Unable to fetch Montana-specific scores. Montana zone not found in the current Weekly Shorts campaign.'
+            };
+        }
+        
+        console.log('✅ Found Montana zone with', montanaZone.top.length, 'players');
+        
+        // Format the data for the embed
+        const formattedData = {
+            users: montanaZone.top.map(player => ({
+                nameOnPlatform: 'Loading...', // We'll need to fetch player names
+                sp: parseInt(player.sp),
+                position: player.position
+            }))
+        };
+        
+        // Get player names for the account IDs
+        const accountIds = montanaZone.top.map(player => player.accountId);
+        const playerNames = await getCachedPlayerNames(accountIds, APICredentials);
+        
+        // Update the formatted data with actual player names
+        formattedData.users.forEach((user, index) => {
+            const accountId = montanaZone.top[index].accountId;
+            user.nameOnPlatform = playerNames[accountId] || 'Unknown Player';
+        });
+        
+        const result = {
+            success: true,
+            data: formattedData,
+            campaignName: 'Weekly Shorts'
+        };
+
+        // Cache the response for 45 minutes
+        await apiCache.setAPIResponse(cacheKey, result);
+        console.log('💾 Cached Montana leaderboard response for 45 minutes');
+
+        return result;
+        
+    } catch (error) {
+        console.error('❌ Error fetching Montana-specific scores:', error);
+        return {
+            success: false,
+            error: error.message,
+            fallbackMessage: `Unable to fetch Montana-specific scores: ${error.message}`
+        };
+    }
+}
+
 module.exports = {
     getCampaignRecords,
     getTotdRecords,
     getTopPlayerScores,
     getWeeklyShorts,
+    getWeeklyShortsTopFive,
     getMontanaTopPlayerTimes,
     getCachedMapInfo,
-    cleanTrackName
+    cleanTrackName,
+    getMontanaSpecificScores
 };
