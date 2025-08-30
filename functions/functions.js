@@ -879,8 +879,48 @@ This bot is now using the official Trackmania campaign leaderboard API to get ac
 }
 
 // Function to get Montana-specific scores using the game API
-async function getMontanaSpecificScores(montanaGroupId) {
+async function getMontanaSpecificScores(montanaGroupId = null) {
     try {
+        console.log('🏔️ Fetching fresh Montana-specific scores from game API...');
+
+        const APICredentials = await APILogin();
+
+        // If no group ID provided, we need to find the correct Weekly Shorts leaderboard group ID
+        if (!montanaGroupId) {
+            console.log('🔍 No group ID provided, fetching current Weekly Shorts seasonUid...');
+            
+            // First get the current Weekly Shorts campaign
+            const currentWeekResponse = await fetch('https://live-services.trackmania.nadeo.live/api/campaign/weekly-shorts?offset=0&length=1', {
+                headers: {
+                    'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
+                    'User-Agent': 'Montana Bot / teehutchy on (Discord)'
+                }
+            });
+            
+            if (!currentWeekResponse.ok) {
+                throw new Error(`Failed to fetch current weekly shorts: ${currentWeekResponse.status}`);
+            }
+            
+            const currentWeekData = await currentWeekResponse.json();
+            
+            if (!currentWeekData.campaignList || currentWeekData.campaignList.length === 0) {
+                throw new Error('No weekly campaigns found in API response');
+            }
+            
+            const currentCampaign = currentWeekData.campaignList[0];
+            console.log(`🎯 Found Weekly Shorts campaign: ${currentCampaign.name} (Week ${currentCampaign.week})`);
+            
+            // Use seasonUid as the leaderboard group ID
+            montanaGroupId = currentCampaign.seasonUid;
+            
+            if (!montanaGroupId) {
+                throw new Error('seasonUid not found in Weekly Shorts campaign data');
+            }
+            
+            console.log(`🎯 Using Weekly Shorts seasonUid as group ID: ${montanaGroupId}`);
+        }
+
+        // If a specific group ID was provided, use the original logic
         // Check if we have cached API response
         const cacheKey = `montana_scores_${montanaGroupId}`;
         const cachedResponse = await apiCache.getAPIResponse(cacheKey);
@@ -890,9 +930,6 @@ async function getMontanaSpecificScores(montanaGroupId) {
             return cachedResponse;
         }
 
-        console.log('🏔️ Fetching fresh Montana-specific scores from game API...');
-
-        const APICredentials = await APILogin();
         const nadeoToken = APICredentials[3];
 
         const response = await fetch(`https://live-services.trackmania.nadeo.live/api/token/leaderboard/group/${montanaGroupId}/top`, {
@@ -985,8 +1022,49 @@ async function getMontanaWeeklyTrack(weekNumber, trackNumber) {
 
         // Calculate offset for chronological week numbering
         // Week 1 = oldest, current week = highest number
-        // If current week is 32 and user wants week 22, offset = 32 - 22 = 10
-        const currentWeek = 32; // This should be updated as weeks progress
+        // Get the current week dynamically from the Weekly Shorts API
+        let currentWeek;
+        
+        // First, get the current weekly shorts to determine what week we're on
+        const currentWeekResponse = await fetch('https://live-services.trackmania.nadeo.live/api/campaign/weekly-shorts?offset=0&length=1', {
+            headers: {
+                'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
+                'User-Agent': 'Montana Bot / teehutchy on (Discord)'
+            }
+        });
+        
+        if (currentWeekResponse.ok) {
+            const currentWeekData = await currentWeekResponse.json();
+            
+            // Try to determine current week from the campaign name or other identifiers
+            if (currentWeekData.campaignList && currentWeekData.campaignList.length > 0) {
+                const currentCampaign = currentWeekData.campaignList[0];
+                
+                // Try to extract week number from campaign name (e.g., "Weekly Shorts #34")
+                const weekMatch = currentCampaign.name?.match(/Weekly Shorts #(\d+)/i) || 
+                                 currentCampaign.name?.match(/#(\d+)/) ||
+                                 currentCampaign.name?.match(/Week (\d+)/i);
+                
+                if (weekMatch) {
+                    currentWeek = parseInt(weekMatch[1]);
+                    console.log(`📅 Detected current week from campaign name: ${currentWeek}`);
+                } else {
+                    // Fallback: calculate based on date if no week number in name
+                    // Weekly Shorts started sometime in 2024, estimate based on weeks since then
+                    const now = new Date();
+                    const weeklyStartDate = new Date('2024-01-07'); // Adjust this to actual start date
+                    const daysSinceStart = Math.floor((now - weeklyStartDate) / (1000 * 60 * 60 * 24));
+                    currentWeek = Math.floor(daysSinceStart / 7) + 1;
+                    
+                    console.log(`📅 Calculated current week from date: ${currentWeek} (estimated)`);
+                }
+            } else {
+                throw new Error('Unable to determine current week from Weekly Shorts API');
+            }
+        } else {
+            throw new Error(`Failed to fetch current weekly shorts: ${currentWeekResponse.status}`);
+        }
+        
         const offset = currentWeek - weekNumber;
         
         if (offset < 0) {

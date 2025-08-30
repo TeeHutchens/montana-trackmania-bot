@@ -49,8 +49,8 @@ module.exports = {
             await interaction.editReply({ embeds: results });
         } else if (subcommand === 'scores') {
             console.log('🏔️ Executing SCORES function (Montana-specific leaderboard)');
-            const montanaGroupId = '5368f740-4cb3-4460-8f85-6b5bac67c7d1';
-            const result = await getMontanaSpecificScores(montanaGroupId);
+            // Let the function dynamically get the current Weekly Shorts group ID
+            const result = await getMontanaSpecificScores();
             
             if (result.success) {
                 console.log('✅ Successfully fetched Montana-specific scores'); // Debugging log

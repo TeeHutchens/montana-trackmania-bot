@@ -102,14 +102,14 @@ function montanaEmbedFormatter(trackName, trackUid, value, authorName, authorAcc
     // Montana-specific custom formatting
     const replyEmbed = new MessageEmbed()
         .setColor('#4A90E2') // Montana blue color
-        .setTitle(`🏔️ ${trackName} - Montana Leaderboard`)
+        .setTitle(`🏔️ ${trackName}`)
         .setURL(`https://trackmania.io/#/leaderboard/${trackUid}`)
         .setAuthor(`Created by ${authorName}`, 'https://trackmania.io/img/square.png', `https://trackmania.io/#/player/${authorAccountId}`)
         .setThumbnail('https://trackmania.io/img/square.png')
         .addFields(
-            { name: '🏆 Montana Top Players', value: value || 'No times recorded yet' },
+            { name: '🏆 MT Leaderboards', value: value || 'No times recorded yet' },
         )
-        .setFooter('🏔️ Montana Trackmania Community | Weekly Shorts');
+        .setFooter('🏔️ MT Trackmania Community | Weekly Shorts');
 
     return replyEmbed
 }

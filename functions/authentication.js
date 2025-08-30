@@ -16,7 +16,8 @@ async function nadeoLogin(ubiLogin) {
         return await loginTrackmaniaUbi(ticket) // login to trackmania, level 1
     } catch (e) {
         // axios error
-        console.log(e)
+        console.log('Nadeo login error:', e.message)
+        throw e
     }
 }
 
@@ -26,7 +27,8 @@ async function trackmaniaNadeoLogin(nadeoLogin) {
         return await loginTrackmaniaNadeo(accessToken, 'NadeoLiveServices') // login to trackmania, level 2
     } catch (e) {
         // axios error
-        console.log(e)
+        console.log('Trackmania Nadeo login error:', e.message)
+        throw e
     }
 }
 
