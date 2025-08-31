@@ -433,7 +433,30 @@ async function getWeeklyShorts() {
         console.log('Getting Weekly Shorts from OpenPlanet/Nadeo API...')
 
         // Get API credentials for Nadeo services
-        const APICredentials = await APILogin()
+        let APICredentials;
+        try {
+            APICredentials = await APILogin();
+        } catch (authError) {
+            console.error('❌ Authentication failed for getWeeklyShorts:', authError.message);
+            results.push({
+                title: '❌ Authentication Error',
+                description: `Unable to authenticate with Trackmania servers.
+
+**Error:** ${authError.message}
+
+**Possible causes:**
+- Trackmania authentication servers are temporarily down
+- Network connectivity issues
+- Service maintenance
+
+**Alternative:** Check Weekly Shorts manually at: https://trackmania.io/#/campaigns/weekly
+
+Please try again later!`,
+                color: 0xff0000,
+                footer: { text: 'Authentication error - this is usually temporary' }
+            });
+            return results;
+        }
 
         // Fetch weekly shorts data from the working OpenPlanet API
         console.log('Fetching weekly shorts campaign data...')
@@ -883,7 +906,31 @@ async function getMontanaSpecificScores(montanaGroupId = null) {
     try {
         console.log('🏔️ Fetching fresh Montana-specific scores from game API...');
 
-        const APICredentials = await APILogin();
+        let APICredentials;
+        try {
+            APICredentials = await APILogin();
+        } catch (authError) {
+            console.error('❌ Authentication failed:', authError.message);
+            return {
+                success: false,
+                error: 'Authentication failed',
+                fallbackMessage: `❌ **Trackmania API Authentication Failed**
+
+**Error:** ${authError.message}
+
+**Possible causes:**
+- Trackmania authentication servers are temporarily down
+- Network connectivity issues
+- Service maintenance
+
+**What you can do:**
+- Try again in a few minutes
+- Check [Trackmania Status](https://live-services.trackmania.nadeo.live) for service updates
+- Use alternative commands like \`/weeklyshorts maps\`
+
+This is a temporary issue with Trackmania's authentication service.`
+            };
+        }
 
         // If no group ID provided, we need to find the correct Weekly Shorts leaderboard group ID
         if (!montanaGroupId) {

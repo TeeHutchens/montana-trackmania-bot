@@ -19,6 +19,20 @@ services:
       - ./cache:/app/cache
       - ./logs:/app/logs  # Optional: for log files
     
+    # DNS configuration to avoid DNS caching issues
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+      - 208.67.222.222
+    
+    # Health check to detect DNS/connectivity issues
+    healthcheck:
+      test: ["CMD", "/app/health-check.sh"]
+      interval: 2h          # Check every 2 hours
+      timeout: 30s
+      retries: 3
+      start_period: 30s
+    
     # Resource limits for Raspberry Pi 5
     deploy:
       resources:
@@ -28,6 +42,11 @@ services:
         reservations:
           memory: 256M
           cpus: '0.5'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     
     # Logging configuration
     logging:

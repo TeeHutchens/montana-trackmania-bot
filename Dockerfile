@@ -1,6 +1,12 @@
 # Use the official Node.js Alpine image (lightweight and Pi 5 compatible)
 FROM node:18-alpine AS base
 
+# Install additional tools for health checks
+RUN apk add --no-cache \
+    bash \
+    netcat-openbsd \
+    bind-tools
+
 # Set the working directory
 WORKDIR /app
 
@@ -12,6 +18,10 @@ RUN npm ci --only=production && npm cache clean --force
 
 # Copy the application code
 COPY . .
+
+# Copy and make health check script executable
+COPY health-check.sh /app/health-check.sh
+RUN chmod +x /app/health-check.sh
 
 # Remove unnecessary files to keep image small
 RUN rm -rf test/ \
