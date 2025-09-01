@@ -219,7 +219,7 @@ async function getCachedMapInfo(mapUid, apiCredentials) {
     return mapData;
 }
 
-TMIOclient.setUserAgent('state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats |Contact: @TeeHutchy on Discord')
+TMIOclient.setUserAgent('Montana-Trackmania-Bot: Discord bot for Montana Trackmania community leaderboards and player statistics | Purpose: Community engagement and competitive tracking | Contact: @TeeHutchy on Discord | GitHub: https://github.com/TeeHutchens/montana-trackmania-bot')
 
 async function getTopPlayerTimes(mapUid, APICredentials = null) {
     try {
@@ -400,9 +400,14 @@ async function getCampaignRecords(campaignObject, trackNumber) {
         return 'No Track Found'
     }
 
-    await TMIOclient.players.get(authorAccountId).then(player => {
-        authorName = player.name
-    })
+    try {
+        await TMIOclient.players.get(authorAccountId).then(player => {
+            authorName = player.name
+        })
+    } catch (error) {
+        console.log(`Error fetching author name from TMIO: ${error.message}`)
+        authorName = 'Unknown Author'
+    }
 
     const topTimesResult = await getTopPlayerTimes(trackUid)
     const replyEmbed = embedFormatter(trackName, trackUid, topTimesResult, authorName, authorAccountId)
@@ -411,17 +416,22 @@ async function getCampaignRecords(campaignObject, trackNumber) {
 
 async function getTotdRecords(date) {
     let trackName, totdSearch, totdauthor, authorAccountId, trackUid = null
-    await TMIOclient.totd.get(date).then(async totd => {
-        trackUid = totd.map().id
-        totdSearch = await totd.map().then(async map => {
-            trackUid = map.uid
-            trackName = map.fileName.replace(/\.[^/.]+$/, "").replace(/\.[^/.]+$/, "")
-            await map.author().then(async author => {
-                totdauthor = author.name
-                authorAccountId = author.id
+    try {
+        await TMIOclient.totd.get(date).then(async totd => {
+            trackUid = totd.map().id
+            totdSearch = await totd.map().then(async map => {
+                trackUid = map.uid
+                trackName = map.fileName.replace(/\.[^/.]+$/, "").replace(/\.[^/.]+$/, "")
+                await map.author().then(async author => {
+                    totdauthor = author.name
+                    authorAccountId = author.id
+                })
             })
         })
-    })
+    } catch (error) {
+        console.log(`Error fetching TOTD data from TMIO: ${error.message}`)
+        return 'Error fetching Track of the Day data'
+    }
     const topTimesResult = await getTopPlayerTimes(trackUid)
     const replyEmbed = embedFormatter(trackName, trackUid, topTimesResult, totdauthor, authorAccountId)
     return replyEmbed

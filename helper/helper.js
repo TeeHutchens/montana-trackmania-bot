@@ -88,12 +88,12 @@ function embedFormatter(trackName, trackUid, value, authorName, authorAccountId)
         .setColor('#f4ca16')
         .setTitle(trackName)
         .setURL(`https://trackmania.io/#/leaderboard/${trackUid}`)
-        .setAuthor(`Created by ${authorName}`, 'https://trackmania.io/img/square.png', `https://trackmania.io/#/player/${authorAccountId}`)
+        .setAuthor({ name: `Created by ${authorName}`, iconURL: 'https://trackmania.io/img/square.png', url: `https://trackmania.io/#/player/${authorAccountId}` })
         .setThumbnail('https://trackmania.io/img/square.png')
         .addFields(
             { name: 'Track Leaders', value: value },
         )
-        .setFooter('This bot is currently in active development.');
+        .setFooter({ text: 'This bot is currently in active development.' });
 
     return replyEmbed
 }
@@ -104,12 +104,12 @@ function montanaEmbedFormatter(trackName, trackUid, value, authorName, authorAcc
         .setColor('#4A90E2') // Montana blue color
         .setTitle(`🏔️ ${trackName}`)
         .setURL(`https://trackmania.io/#/leaderboard/${trackUid}`)
-        .setAuthor(`Created by ${authorName}`, 'https://trackmania.io/img/square.png', `https://trackmania.io/#/player/${authorAccountId}`)
+        .setAuthor({ name: `Created by ${authorName}`, iconURL: 'https://trackmania.io/img/square.png', url: `https://trackmania.io/#/player/${authorAccountId}` })
         .setThumbnail('https://trackmania.io/img/square.png')
         .addFields(
             { name: '🏆 MT Leaderboards', value: value || 'No times recorded yet' },
         )
-        .setFooter('🏔️ MT Trackmania Community | Weekly Shorts');
+        .setFooter({ text: '🏔️ MT Trackmania Community | Weekly Shorts' });
 
     return replyEmbed
 }
@@ -125,7 +125,7 @@ function embedScoresFormatter(data, campaign, ioCampaignId) {
             { name: 'Player', value: Formatters.bold(data[1]), inline: true },
             { name: 'Score', value: data[2], inline: true },
         )
-        .setFooter('This bot is currently in active development.');
+        .setFooter({ text: 'This bot is currently in active development.' });
 
     return replyEmbed
 }
@@ -151,7 +151,7 @@ function playerProfileFormatter(playerObject, cotd, matchmaking) {
         .setColor('#0099ff')
         .setTitle(playerObject.name)
         .setURL(`https://trackmania.io/#/player/${playerObject.id}`)
-        .setAuthor('Brought to you by Trackmania.io', 'https://trackmania.io/img/square.png', `https://trackmania.io/#/totd`)
+        .setAuthor({ name: 'Brought to you by Trackmania.io', iconURL: 'https://trackmania.io/img/square.png', url: `https://trackmania.io/#/totd` })
         .setDescription(`${playerObject.zone[0].name}, ${playerObject.zone[1].name}, ${playerObject.zone[2].name}`)
         .setThumbnail('https://www.trackmania.com/90987169_2814211285336341_8730731110385844224_o/')
         .addFields(
@@ -163,7 +163,7 @@ function playerProfileFormatter(playerObject, cotd, matchmaking) {
             { name: `${playerObject.zone[3].name}`, value: `${ordinal_suffix_of(playerObject.zone[3].ranking)}`, inline: true },
             { name: '\u200B', value: '\u200B' },
         )
-        .setFooter('This bot is currently in active development.', 'https://www.trackmania.com/90987169_2814211285336341_8730731110385844224_o/');
+        .setFooter({ text: 'This bot is currently in active development.', iconURL: 'https://www.trackmania.com/90987169_2814211285336341_8730731110385844224_o/' });
 
     if (cotd != null) {
         exampleEmbed = exampleEmbed.addFields(

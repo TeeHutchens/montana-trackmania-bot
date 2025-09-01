@@ -3,6 +3,17 @@ const fs = require('fs');
 
 require('dotenv').config()
 
+// Handle unhandled promise rejections to prevent crashes
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Promise Rejection at:', promise, 'reason:', reason);
+    // Don't exit the process, just log the error
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('❌ Uncaught Exception:', error);
+    // Log but don't exit unless it's critical
+});
+
 let currentCampaignId = null
 
 const client = new Client({
