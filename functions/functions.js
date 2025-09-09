@@ -185,7 +185,7 @@ async function getCachedMapInfo(mapUid, apiCredentials) {
         const mapResponse = await fetch(`https://live-services.trackmania.nadeo.live/api/token/map/${mapUid}`, {
             headers: {
                 'Authorization': `nadeo_v1 t=${apiCredentials[2].accessToken}`,
-                'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: @TeeHutchy on Discord'
+                'User-Agent': BOT_CONFIG.USER_AGENT
             }
         });
 
@@ -312,7 +312,7 @@ async function getMontanaTopPlayerTimes(mapUid, APICredentials = null) {
         const headers = {
             'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
             'Content-Type': 'application/json',
-            'User-Agent': 'state-trackmania-bot / montana@discord'
+            'User-Agent': BOT_CONFIG.USER_AGENT
         };
 
         console.log(`Getting zone-based leaderboard data...`)
@@ -473,7 +473,7 @@ Please try again later!`,
         const response = await fetch('https://live-services.trackmania.nadeo.live/api/campaign/weekly-shorts?offset=0&length=1', {
             headers: {
                 'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-                'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: @TeeHutchy on Discord'
+                'User-Agent': BOT_CONFIG.USER_AGENT
             }
         })
 
@@ -628,7 +628,7 @@ async function getWeeklyShortsCampaignLeaderboard(campaignId, apiCredentials) {
 
         const headers = {
             'Authorization': `nadeo_v1 t=${apiCredentials[2].accessToken}`,
-            'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: @TeeHutchy on Discord'
+            'User-Agent': BOT_CONFIG.USER_AGENT
         };
 
         console.log(`📡 Fetching campaign leaderboard data...`)
@@ -831,7 +831,7 @@ async function getWeeklyShortsTopFive() {
         const campaignResponse = await fetch('https://live-services.trackmania.nadeo.live/api/campaign/weekly-shorts?offset=0&length=1', {
             headers: {
                 'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-                'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: @TeeHutchy on Discord'
+                'User-Agent': BOT_CONFIG.USER_AGENT
             }
         })
 
@@ -950,7 +950,7 @@ This is a temporary issue with Trackmania's authentication service.`
             const currentWeekResponse = await fetch('https://live-services.trackmania.nadeo.live/api/campaign/weekly-shorts?offset=0&length=1', {
                 headers: {
                     'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-                    'User-Agent': 'Montana Bot / teehutchy on (Discord)'
+                    'User-Agent': BOT_CONFIG.USER_AGENT
                 }
             });
             
@@ -992,7 +992,7 @@ This is a temporary issue with Trackmania's authentication service.`
         const response = await fetch(`https://live-services.trackmania.nadeo.live/api/token/leaderboard/group/${montanaGroupId}/top`, {
             headers: {
                 'Authorization': 'nadeo_v1 t=' + nadeoToken,
-                'User-Agent': 'Montana Bot / teehutchy on (Discord)'
+                'User-Agent': BOT_CONFIG.USER_AGENT
             }
         });
 
@@ -1086,7 +1086,7 @@ async function getMontanaWeeklyTrack(weekNumber, trackNumber) {
         const currentWeekResponse = await fetch('https://live-services.trackmania.nadeo.live/api/campaign/weekly-shorts?offset=0&length=1', {
             headers: {
                 'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-                'User-Agent': 'Montana Bot / teehutchy on (Discord)'
+                'User-Agent': BOT_CONFIG.USER_AGENT
             }
         });
         
@@ -1134,7 +1134,7 @@ async function getMontanaWeeklyTrack(weekNumber, trackNumber) {
         const response = await fetch(`https://live-services.trackmania.nadeo.live/api/campaign/weekly-shorts?offset=${offset}&length=1`, {
             headers: {
                 'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-                'User-Agent': 'Montana Bot / teehutchy on (Discord)'
+                'User-Agent': BOT_CONFIG.USER_AGENT
             }
         });
 
@@ -1238,7 +1238,7 @@ async function getMontanaCampaignTrack(trackNumber) {
         const response = await fetch('https://live-services.trackmania.nadeo.live/api/campaign/official?offset=0&length=1', {
             headers: {
                 'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-                'User-Agent': 'Montana Bot / teehutchy on (Discord)'
+                'User-Agent': BOT_CONFIG.USER_AGENT
             }
         });
 
@@ -1334,7 +1334,7 @@ async function getMontanaCampaignScores() {
         const response = await fetch('https://live-services.trackmania.nadeo.live/api/campaign/official?offset=0&length=1', {
             headers: {
                 'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-                'User-Agent': 'Montana Bot / teehutchy on (Discord)'
+                'User-Agent': BOT_CONFIG.USER_AGENT
             }
         });
 
@@ -1380,7 +1380,7 @@ async function getMontanaCampaignScores() {
             const gameResponse = await fetch(gameLeaderboardUrl, {
                 headers: {
                     'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-                    'User-Agent': 'Montana Bot / teehutchy on (Discord)'
+                    'User-Agent': BOT_CONFIG.USER_AGENT
                 }
             });
 
@@ -1403,7 +1403,7 @@ async function getMontanaCampaignScores() {
             const leaderboardResponse = await fetch(leaderboardUrl, {
                 headers: {
                     'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-                    'User-Agent': 'Montana Bot / teehutchy on (Discord)'
+                    'User-Agent': BOT_CONFIG.USER_AGENT
                 }
             });
 

@@ -1,0 +1,39 @@
+{
+  "montana_scores_c90a5830-1a6f-41fb-8b8a-50805f4ffba6": {
+    "data": {
+      "success": true,
+      "data": {
+        "users": [
+          {
+            "nameOnPlatform": "FrostyDogTM",
+            "sp": 5868,
+            "position": 1
+          },
+          {
+            "nameOnPlatform": "Wirtualfan67",
+            "sp": 3618,
+            "position": 2
+          },
+          {
+            "nameOnPlatform": "Vectorecker",
+            "sp": 3149,
+            "position": 3
+          },
+          {
+            "nameOnPlatform": "Silly_TM",
+            "sp": 3089,
+            "position": 4
+          },
+          {
+            "nameOnPlatform": "J3gnd",
+            "sp": 3083,
+            "position": 5
+          }
+        ]
+      },
+      "campaignName": "Weekly Shorts"
+    },
+    "expires": 1757382216846,
+    "timestamp": 1757379516846
+  }
+}

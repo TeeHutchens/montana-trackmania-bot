@@ -14,7 +14,7 @@ async function testCampaignLeaderboard() {
         const campaignResponse = await fetch('https://live-services.trackmania.nadeo.live/api/campaign/weekly-shorts?offset=0&length=1', {
             headers: {
                 'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-                'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: @TeeHutchy on Discord'
+                'User-Agent': BOT_CONFIG.USER_AGENT
             }
         });
         
@@ -40,7 +40,7 @@ async function testCampaignLeaderboard() {
         
         const headers = {
             'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-            'User-Agent': 'state-trackmania-bot: Discord bot for Trackmania leaderboards and player stats | Contact: @TeeHutchy on Discord'
+            'User-Agent': BOT_CONFIG.USER_AGENT
         };
         
         for (let i = 0; i < testEndpoints.length; i++) {
