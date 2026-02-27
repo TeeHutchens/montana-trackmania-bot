@@ -1,5 +1,9 @@
 const { Formatters, MessageEmbed } = require('discord.js');
 const TMIO = require('trackmania.io'), TMIOclient = new TMIO.Client();
+const { BOT_CONFIG } = require('../constants.js');
+
+// Set User-Agent for TMIO client
+TMIOclient.setUserAgent(BOT_CONFIG.USER_AGENT);
 
 function recordPlacingFormatter(playerTimeMapSort) {
     let result = ''

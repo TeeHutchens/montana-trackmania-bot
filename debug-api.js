@@ -1,5 +1,6 @@
 const fetch = require('node-fetch');
 const { APILogin } = require("./functions/authentication.js");
+const { BOT_CONFIG } = require('./constants.js');
 
 async function testCampaignLeaderboard() {
     try {

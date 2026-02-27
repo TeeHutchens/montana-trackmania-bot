@@ -1,6 +1,8 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { getCampaignRecords } = require('../functions/functions.js')
+const { BOT_CONFIG } = require('../constants.js')
 const TMIO = require('trackmania.io'), TMIOclient = new TMIO.Client();
+TMIOclient.setUserAgent(BOT_CONFIG.USER_AGENT);
 
 module.exports = {
     data: new SlashCommandBuilder()

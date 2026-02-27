@@ -1,12 +1,16 @@
 const TMIO = require('trackmania.io'), TMIOclient = new TMIO.Client();
-const { getTopPlayersGroup, getTopPlayersMap, getMaps, getMapRecords, getProfiles, getProfilesById } = require('trackmania-api-node')
+const { getTopPlayersGroup, getTopPlayersMap, getMaps, getMapRecords } = require('trackmania-api-node')
 const { APILogin } = require("../functions/authentication.js")
 const { embedFormatter, montanaEmbedFormatter, recordPlacingFormatter, scoreFormatter } = require("../helper/helper.js")
+const { BOT_CONFIG } = require('../constants.js')
 const fetch = require('node-fetch')
 const PlayerCache = require('../cache/PlayerCache.js')
 const MapCache = require('../cache/MapCache.js')
 const APICache = require('../cache/APICache.js')
 require('dotenv').config()
+
+// Set TMIO user agent immediately (required by trackmania.io API)
+TMIOclient.setUserAgent(BOT_CONFIG.USER_AGENT);
 
 // Initialize caches
 const playerCache = new PlayerCache();
@@ -88,36 +92,47 @@ async function getCachedPlayerNames(accountIds, apiCredentials) {
         if (missing.length > 0) {
             console.log(`🔍 Fetching ${missing.length} missing player profiles...`);
 
-            const profiles = await getProfiles(apiCredentials[1].accessToken, missing);
-            if (profiles && profiles.length > 0) {
-                const profileIds = profiles.map(p => p.uid);
-                const profileIdAccountIdMap = new Map();
-
-                for (const profile of profiles) {
-                    profileIdAccountIdMap.set(profile.uid, profile.accountId);
-                }
-
-                const detailedProfiles = await getProfilesById(apiCredentials[0].ticket, profileIds);
-
-                if (detailedProfiles && detailedProfiles.profiles) {
-                    for (const profile of detailedProfiles.profiles) {
-                        const accountId = profileIdAccountIdMap.get(profile.profileId);
-                        if (accountId) {
-                            const playerName = profile.nameOnPlatform || `Player_${accountId.substring(0, 8)}`;
-                            newPlayerNames[accountId] = playerName;
-                        }
+            // Use TMIO API (trackmania.io) which works reliably for player names
+            for (const accountId of missing) {
+                try {
+                    const player = await TMIOclient.players.get(accountId);
+                    if (player && player.name) {
+                        newPlayerNames[accountId] = player.name;
+                        console.log(`✅ Got player name from TMIO: ${accountId} -> ${player.name}`);
+                    } else {
+                        console.log(`⚠️ TMIO returned no name for ${accountId}`);
                     }
+                } catch (playerError) {
+                    // If TMIO fails for this player, we'll use fallback name
+                    console.log(`⚠️ TMIO error for ${accountId}: ${playerError.message}`);
                 }
             }
 
-            // Cache the new names
+            // Cache only the names successfully fetched from the API (before adding fallbacks)
             if (Object.keys(newPlayerNames).length > 0) {
                 playerCache.setMultiplePlayerNames(newPlayerNames);
                 console.log(`💾 Cached ${Object.keys(newPlayerNames).length} new player names`);
             }
+
+            // For any missing players that weren't found in the API response, create fallback names
+            // These are NOT cached so the API will be retried on the next run
+            for (const accountId of missing) {
+                if (!newPlayerNames[accountId]) {
+                    newPlayerNames[accountId] = `Player_${accountId.substring(0, 8)}`;
+                    console.log(`⚠️ Using fallback name for ${accountId} (not cached, will retry)`);
+                }
+            }
         }
     } catch (error) {
         console.log('Error fetching missing player names:', error.message);
+
+        // Even if the API call fails, create fallback names for all missing players
+        // These are NOT cached so the API will be retried on the next run
+        for (const accountId of missing) {
+            if (!newPlayerNames[accountId]) {
+                newPlayerNames[accountId] = `Player_${accountId.substring(0, 8)}`;
+            }
+        }
     }
 
     // Combine cached and newly fetched names
@@ -137,23 +152,18 @@ async function getAuthorName(authorAccountId, apiCredentials) {
 
     try {
         console.log(`🔍 Fetching author name for ${authorAccountId}...`);
-        // Try to get author info from profiles API
-        const profiles = await getProfiles(apiCredentials[1].accessToken, [authorAccountId])
-        if (profiles && profiles.length > 0) {
-            const profileIds = profiles.map(p => p.uid)
-            const detailedProfiles = await getProfilesById(apiCredentials[0].ticket, profileIds)
+        // Use TMIO API (trackmania.io) which works reliably
+        const player = await TMIOclient.players.get(authorAccountId);
 
-            if (detailedProfiles && detailedProfiles.profiles && detailedProfiles.profiles.length > 0) {
-                const authorProfile = detailedProfiles.profiles[0]
-                const authorName = authorProfile.nameOnPlatform || 'Unknown Author'
+        if (player && player.name) {
+            const authorName = player.name;
 
-                // Cache the result
-                playerCache.setPlayerName(authorAccountId, authorName);
-                playerCache.saveCache();
+            // Cache the result
+            playerCache.setPlayerName(authorAccountId, authorName);
+            playerCache.saveCache();
 
-                console.log(`💾 Cached author name: ${authorAccountId} → ${authorName}`);
-                return authorName;
-            }
+            console.log(`💾 Cached author name: ${authorAccountId} → ${authorName}`);
+            return authorName;
         }
     } catch (error) {
         console.log(`Could not get author name for ${authorAccountId}:`, error.message)
@@ -218,8 +228,6 @@ async function getCachedMapInfo(mapUid, apiCredentials) {
 
     return mapData;
 }
-
-TMIOclient.setUserAgent('Montana-Trackmania-Bot: Discord bot for Montana Trackmania community leaderboards and player statistics | Purpose: Community engagement and competitive tracking | Contact: @TeeHutchy on Discord | GitHub: https://github.com/TeeHutchens/montana-trackmania-bot')
 
 async function getTopPlayerTimes(mapUid, APICredentials = null) {
     try {
@@ -591,26 +599,22 @@ async function getTopPlayerScores(groupUId) {
             })
             accountIds.push(playerList[i]["accountId"])
         }
-        const playerProfiles = await getProfiles(APICredentials[1].accessToken, accountIds)
-        const profileIdAccountIdMap = new Map();
-        const profileIds = []
-        for (const i in playerProfiles) {
-            let uid = playerProfiles[i]["uid"]
-            let accountId = playerProfiles[i]["accountId"]
-            profileIds.push(uid)
-            profileIdAccountIdMap.set(accountId, uid)
-        }
+        // Use TMIO API to get player names (trackmania.io)
         for (let i = 0; i < dictionary['users'].length; i++) {
-            dictionary['users'][i]['uid'] = profileIdAccountIdMap.get(dictionary['users'][i]['accountId'])
-        }
-        const profiles = await getProfilesById(APICredentials[0].ticket, profileIds)
-        for (const i in profiles["profiles"]) {
-            let { nameOnPlatform, profileId } = profiles["profiles"][i]
-            for (let i = 0; i < dictionary['users'].length; i++) {
-                if (profileId == dictionary['users'][i]['uid']) {
-                    dictionary['users'][i]['nameOnPlatform'] = nameOnPlatform
-                    break
+            const accountId = dictionary['users'][i]['accountId'];
+            try {
+                const player = await TMIOclient.players.get(accountId);
+                if (player && player.name) {
+                    dictionary['users'][i]['nameOnPlatform'] = player.name;
+                    dictionary['users'][i]['uid'] = player.id || '';
+                } else {
+                    dictionary['users'][i]['nameOnPlatform'] = `Player_${accountId.substring(0, 8)}`;
+                    dictionary['users'][i]['uid'] = '';
                 }
+            } catch (error) {
+                console.log(`Could not fetch player ${accountId}: ${error.message}`);
+                dictionary['users'][i]['nameOnPlatform'] = `Player_${accountId.substring(0, 8)}`;
+                dictionary['users'][i]['uid'] = '';
             }
         }
         const result = scoreFormatter(dictionary)
@@ -685,19 +689,23 @@ async function getWeeklyShortsCampaignLeaderboard(campaignId, apiCredentials) {
         // Sort by SP (Score Points) descending
         montanaPlayers.sort((a, b) => b.sp - a.sp);
 
-        // Get player names for the top Montana players
-        const accountIds = montanaPlayers.slice(0, 5).map(p => p.accountId);
-        const profiles = await getProfilesById(apiCredentials[0].ticket, accountIds);
-
-        // Create the final result in the expected format
+        // Get player names for the top Montana players using TMIO API
         const dictionary = {
             'users': []
         };
 
         for (let i = 0; i < Math.min(5, montanaPlayers.length); i++) {
             const player = montanaPlayers[i];
-            const profile = profiles.profiles.find(p => p.profileId === player.accountId);
-            const playerName = profile ? profile.nameOnPlatform : `Unknown-${player.accountId}`;
+            let playerName = `Unknown-${player.accountId}`;
+
+            try {
+                const tmioPlayer = await TMIOclient.players.get(player.accountId);
+                if (tmioPlayer && tmioPlayer.name) {
+                    playerName = tmioPlayer.name;
+                }
+            } catch (error) {
+                console.log(`Could not fetch player ${player.accountId}: ${error.message}`);
+            }
 
             dictionary.users.push({
                 nameOnPlatform: playerName,
