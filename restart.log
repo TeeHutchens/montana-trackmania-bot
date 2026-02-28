@@ -714,3 +714,7 @@ Thu 26 Feb 04:00:01 MST 2026: Starting daily container restart to refresh DNS an
 Thu 26 Feb 04:00:01 MST 2026: Container not running, starting it
  Container montana-trackmania-bot  Running
 Thu 26 Feb 04:00:01 MST 2026: Daily restart completed
+Fri 27 Feb 04:00:02 MST 2026: Starting daily container restart to refresh DNS and network stack
+Fri 27 Feb 04:00:02 MST 2026: Container not running, starting it
+ Container montana-trackmania-bot  Running
+Fri 27 Feb 04:00:02 MST 2026: Daily restart completed

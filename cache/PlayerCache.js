@@ -4,7 +4,7 @@ const path = require('path');
 class PlayerCache {
     constructor() {
         this.cacheFile = path.join(__dirname, '..', 'cache', 'player_cache.json');
-        this.cacheDuration = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+        this.cacheDuration = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
         this.cache = new Map();
         this.loadCache();
     }

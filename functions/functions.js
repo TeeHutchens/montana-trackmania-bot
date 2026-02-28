@@ -12,6 +12,67 @@ require('dotenv').config()
 // Set TMIO user agent immediately (required by trackmania.io API)
 TMIOclient.setUserAgent(BOT_CONFIG.USER_AGENT);
 
+// Wrap TMIO calls with a timeout so they fail fast instead of hanging indefinitely
+function tmioWithTimeout(promise, timeoutMs = 8000) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`TMIO request timed out after ${timeoutMs}ms`)), timeoutMs)
+        )
+    ]);
+}
+
+// ── api.trackmania.com OAuth2 token (client_credentials) ────────────────────
+let _tmApiToken = null;
+let _tmApiTokenExpiry = 0;
+
+async function getTMApiToken() {
+    if (_tmApiToken && Date.now() < _tmApiTokenExpiry) {
+        return _tmApiToken;
+    }
+    const clientId = process.env.APP_IDENTIFIER;
+    const clientSecret = process.env.APP_SECRET;
+    if (!clientId || !clientSecret) {
+        throw new Error('APP_IDENTIFIER and APP_SECRET must be set in .env');
+    }
+    const response = await fetch('https://api.trackmania.com/api/access_token', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': BOT_CONFIG.USER_AGENT
+        },
+        body: `grant_type=client_credentials&client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}`
+    });
+    if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`TM API token request failed: ${response.status} ${body}`);
+    }
+    const data = await response.json();
+    _tmApiToken = data.access_token;
+    _tmApiTokenExpiry = Date.now() + (data.expires_in - 60) * 1000; // refresh 60s early
+    console.log('✅ TM API (api.trackmania.com) token obtained');
+    return _tmApiToken;
+}
+
+// Batch-lookup display names from api.trackmania.com (up to 50 IDs per call)
+// Returns { accountId: displayName, ... }
+async function getDisplayNames(accountIds) {
+    if (!accountIds || accountIds.length === 0) return {};
+    const token = await getTMApiToken();
+    const params = accountIds.map(id => `accountId[]=${encodeURIComponent(id)}`).join('&');
+    const response = await fetch(`https://api.trackmania.com/api/display-names?${params}`, {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'User-Agent': BOT_CONFIG.USER_AGENT
+        }
+    });
+    if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`display-names API returned ${response.status} ${body}`);
+    }
+    return await response.json(); // { "accountId": "displayName", ... }
+}
+
 // Initialize caches
 const playerCache = new PlayerCache();
 const mapCache = new MapCache();
@@ -75,7 +136,7 @@ function cleanTrackName(name) {
 }
 
 // Function to get multiple player names with caching
-async function getCachedPlayerNames(accountIds, apiCredentials) {
+async function getCachedPlayerNames(accountIds) {
     const { cached, missing } = playerCache.getMultiplePlayerNames(accountIds);
 
     console.log(`📦 Found ${Object.keys(cached).length} cached player names, need to fetch ${missing.length}`);
@@ -90,32 +151,21 @@ async function getCachedPlayerNames(accountIds, apiCredentials) {
 
     try {
         if (missing.length > 0) {
-            console.log(`🔍 Fetching ${missing.length} missing player profiles...`);
+            console.log(`🔍 Fetching ${missing.length} missing player names from api.trackmania.com...`);
 
-            // Use TMIO API (trackmania.io) which works reliably for player names
-            for (const accountId of missing) {
-                try {
-                    const player = await TMIOclient.players.get(accountId);
-                    if (player && player.name) {
-                        newPlayerNames[accountId] = player.name;
-                        console.log(`✅ Got player name from TMIO: ${accountId} -> ${player.name}`);
-                    } else {
-                        console.log(`⚠️ TMIO returned no name for ${accountId}`);
-                    }
-                } catch (playerError) {
-                    // If TMIO fails for this player, we'll use fallback name
-                    console.log(`⚠️ TMIO error for ${accountId}: ${playerError.message}`);
-                }
+            const nameData = await getDisplayNames(missing);
+            for (const [accountId, displayName] of Object.entries(nameData)) {
+                newPlayerNames[accountId] = displayName;
+                console.log(`✅ Got player name: ${accountId} -> ${displayName}`);
             }
 
-            // Cache only the names successfully fetched from the API (before adding fallbacks)
+            // Cache only the names successfully fetched (before adding fallbacks)
             if (Object.keys(newPlayerNames).length > 0) {
                 playerCache.setMultiplePlayerNames(newPlayerNames);
                 console.log(`💾 Cached ${Object.keys(newPlayerNames).length} new player names`);
             }
 
-            // For any missing players that weren't found in the API response, create fallback names
-            // These are NOT cached so the API will be retried on the next run
+            // For any not returned by the API, use a fallback (not cached, retried next run)
             for (const accountId of missing) {
                 if (!newPlayerNames[accountId]) {
                     newPlayerNames[accountId] = `Player_${accountId.substring(0, 8)}`;
@@ -126,8 +176,6 @@ async function getCachedPlayerNames(accountIds, apiCredentials) {
     } catch (error) {
         console.log('Error fetching missing player names:', error.message);
 
-        // Even if the API call fails, create fallback names for all missing players
-        // These are NOT cached so the API will be retried on the next run
         for (const accountId of missing) {
             if (!newPlayerNames[accountId]) {
                 newPlayerNames[accountId] = `Player_${accountId.substring(0, 8)}`;
@@ -138,7 +186,7 @@ async function getCachedPlayerNames(accountIds, apiCredentials) {
     // Combine cached and newly fetched names
     return { ...cached, ...newPlayerNames };
 }
-async function getAuthorName(authorAccountId, apiCredentials) {
+async function getAuthorName(authorAccountId) {
     if (!authorAccountId || authorAccountId === 'unknown') {
         return 'Unknown Author'
     }
@@ -152,16 +200,12 @@ async function getAuthorName(authorAccountId, apiCredentials) {
 
     try {
         console.log(`🔍 Fetching author name for ${authorAccountId}...`);
-        // Use TMIO API (trackmania.io) which works reliably
-        const player = await TMIOclient.players.get(authorAccountId);
+        const nameData = await getDisplayNames([authorAccountId]);
+        const authorName = nameData[authorAccountId];
 
-        if (player && player.name) {
-            const authorName = player.name;
-
-            // Cache the result
+        if (authorName) {
             playerCache.setPlayerName(authorAccountId, authorName);
             playerCache.saveCache();
-
             console.log(`💾 Cached author name: ${authorAccountId} → ${authorName}`);
             return authorName;
         }
@@ -210,7 +254,7 @@ async function getCachedMapInfo(mapUid, apiCredentials) {
 
             // Get the actual author name if we have a valid author ID
             if (mapData.author !== 'unknown') {
-                mapData.authorName = await getAuthorName(mapData.author, apiCredentials);
+                mapData.authorName = await getAuthorName(mapData.author);
             }
 
             console.log(`💾 Caching map info: ${mapData.name} by ${mapData.authorName} (${mapData.author})`);
@@ -240,9 +284,6 @@ async function getTopPlayerTimes(mapUid, APICredentials = null) {
         console.log(`Getting top players for map: ${mapUid}`)
         const topPlayersResult = await getTopPlayersMap(APICredentials[3], mapUid)
 
-        const worldMapInfo = await getMaps(APICredentials[1].accessToken, [mapUid])
-        const worldMapId = worldMapInfo[0]['mapId']
-
         // Get the top players list (usually at index 0 for World rankings)
         let playerList = null
         if (topPlayersResult && topPlayersResult.tops && topPlayersResult.tops[0] && topPlayersResult.tops[0].top) {
@@ -265,7 +306,7 @@ async function getTopPlayerTimes(mapUid, APICredentials = null) {
         console.log(`Getting profiles for ${accountIds.length} players...`)
 
         // Use cached player names
-        const playerNames = await getCachedPlayerNames(accountIds, APICredentials);
+        const playerNames = await getCachedPlayerNames(accountIds);
 
         const regularMapInfo = await getMaps(APICredentials[1].accessToken, [mapUid])
         const regularMapId = regularMapInfo[0]['mapId']
@@ -358,7 +399,7 @@ async function getMontanaTopPlayerTimes(mapUid, APICredentials = null) {
         console.log(`Getting profiles for ${accountIds.length} Montana players...`)
 
         // Use cached player names
-        const playerNames = await getCachedPlayerNames(accountIds, APICredentials);
+        const playerNames = await getCachedPlayerNames(accountIds);
 
         console.log(`Getting detailed Montana player profiles and records...`)
         const playerTimeMap = new Map()
@@ -409,11 +450,10 @@ async function getCampaignRecords(campaignObject, trackNumber) {
     }
 
     try {
-        await TMIOclient.players.get(authorAccountId).then(player => {
-            authorName = player.name
-        })
+        const nameData = await getDisplayNames([authorAccountId]);
+        authorName = nameData[authorAccountId] || 'Unknown Author';
     } catch (error) {
-        console.log(`Error fetching author name from TMIO: ${error.message}`)
+        console.log(`Error fetching author name: ${error.message}`)
         authorName = 'Unknown Author'
     }
 
@@ -423,11 +463,11 @@ async function getCampaignRecords(campaignObject, trackNumber) {
 }
 
 async function getTotdRecords(date) {
-    let trackName, totdSearch, totdauthor, authorAccountId, trackUid = null
+    let trackName, totdauthor, authorAccountId, trackUid = null
     try {
-        await TMIOclient.totd.get(date).then(async totd => {
+        await tmioWithTimeout(TMIOclient.totd.get(date)).then(async totd => {
             trackUid = totd.map().id
-            totdSearch = await totd.map().then(async map => {
+            await totd.map().then(async map => {
                 trackUid = map.uid
                 trackName = map.fileName.replace(/\.[^/.]+$/, "").replace(/\.[^/.]+$/, "")
                 await map.author().then(async author => {
@@ -599,323 +639,20 @@ async function getTopPlayerScores(groupUId) {
             })
             accountIds.push(playerList[i]["accountId"])
         }
-        // Use TMIO API to get player names (trackmania.io)
+        // Batch-fetch all player names from api.trackmania.com
+        const nameMap = await getDisplayNames(accountIds).catch(e => {
+            console.log(`Error fetching player names: ${e.message}`);
+            return {};
+        });
         for (let i = 0; i < dictionary['users'].length; i++) {
             const accountId = dictionary['users'][i]['accountId'];
-            try {
-                const player = await TMIOclient.players.get(accountId);
-                if (player && player.name) {
-                    dictionary['users'][i]['nameOnPlatform'] = player.name;
-                    dictionary['users'][i]['uid'] = player.id || '';
-                } else {
-                    dictionary['users'][i]['nameOnPlatform'] = `Player_${accountId.substring(0, 8)}`;
-                    dictionary['users'][i]['uid'] = '';
-                }
-            } catch (error) {
-                console.log(`Could not fetch player ${accountId}: ${error.message}`);
-                dictionary['users'][i]['nameOnPlatform'] = `Player_${accountId.substring(0, 8)}`;
-                dictionary['users'][i]['uid'] = '';
-            }
+            dictionary['users'][i]['nameOnPlatform'] = nameMap[accountId] || `Player_${accountId.substring(0, 8)}`;
+            dictionary['users'][i]['uid'] = '';
         }
         const result = scoreFormatter(dictionary)
         return result
     } catch (e) {
         console.log(e)
-    }
-}
-
-async function getWeeklyShortsCampaignLeaderboard(campaignId, apiCredentials) {
-    try {
-        console.log(`🏆 Getting campaign leaderboard for: ${campaignId}`)
-
-        const leaderboardUrl = `https://live-services.trackmania.nadeo.live/api/token/leaderboard/group/${campaignId}/top?length=100&onlyWorld=false&offset=0`;
-
-        const headers = {
-            'Authorization': `nadeo_v1 t=${apiCredentials[2].accessToken}`,
-            'User-Agent': BOT_CONFIG.USER_AGENT
-        };
-
-        console.log(`📡 Fetching campaign leaderboard data...`)
-        const response = await fetch(leaderboardUrl, { headers });
-
-        if (!response.ok) {
-            console.log(`❌ Campaign leaderboard API failed: ${response.status}`)
-            return null;
-        }
-
-        const data = await response.json();
-        console.log(`✅ Got campaign leaderboard with ${data.tops?.length || 0} zones`)
-        console.log(`🔍 Campaign leaderboard structure:`, JSON.stringify(data, null, 2))
-
-        // Check if we have any zones at all
-        if (!data.tops || data.tops.length === 0) {
-            console.log(`❌ Campaign leaderboard returned 0 zones - API structure may be different or leaderboard not populated yet`)
-            return null;
-        }
-
-        // Find Montana players from all zones
-        const montanaPlayers = [];
-
-        if (data.tops && data.tops.length > 0) {
-            for (const zone of data.tops) {
-                console.log(`🌍 Processing zone: ${zone.zoneName} with ${zone.top?.length || 0} players`)
-                if (zone.top && Array.isArray(zone.top)) {
-                    for (const player of zone.top) {
-                        console.log(`👤 Player: ${player.zoneName} (position: ${player.position}, sp: ${player.sp})`)
-                        // Check if player is from Montana
-                        if (player.zoneName && player.zoneName.toLowerCase().includes('montana')) {
-                            montanaPlayers.push({
-                                accountId: player.accountId,
-                                zoneName: player.zoneName,
-                                position: player.position,
-                                sp: parseInt(player.sp) // Score Points
-                            });
-                        }
-                    }
-                }
-            }
-        } else {
-            console.log(`🔍 No tops array found in response. Response keys:`, Object.keys(data))
-            console.log(`🔍 Full response:`, data)
-        }
-
-        console.log(`🏔️ Found ${montanaPlayers.length} Montana players in campaign leaderboard`)
-
-        if (montanaPlayers.length === 0) {
-            console.log(`❌ No Montana players found in campaign leaderboard`)
-            return null;
-        }
-
-        // Sort by SP (Score Points) descending
-        montanaPlayers.sort((a, b) => b.sp - a.sp);
-
-        // Get player names for the top Montana players using TMIO API
-        const dictionary = {
-            'users': []
-        };
-
-        for (let i = 0; i < Math.min(5, montanaPlayers.length); i++) {
-            const player = montanaPlayers[i];
-            let playerName = `Unknown-${player.accountId}`;
-
-            try {
-                const tmioPlayer = await TMIOclient.players.get(player.accountId);
-                if (tmioPlayer && tmioPlayer.name) {
-                    playerName = tmioPlayer.name;
-                }
-            } catch (error) {
-                console.log(`Could not fetch player ${player.accountId}: ${error.message}`);
-            }
-
-            dictionary.users.push({
-                nameOnPlatform: playerName,
-                sp: player.sp,
-                position: player.position,
-                zoneName: player.zoneName
-            });
-        }
-
-        console.log(`🏆 Montana campaign leaderboard:`, dictionary.users.map(u => `${u.nameOnPlatform}: ${u.sp} SP`));
-
-        return dictionary;
-
-    } catch (error) {
-        console.log(`❌ Error getting campaign leaderboard:`, error.message);
-        return null;
-    }
-}
-
-async function getWeeklyShortsIndividualMapScoring(currentCampaign, APICredentials, campaignName) {
-    console.log('🏔️ Using individual map scoring fallback method...')
-
-    // Get Montana players' scores from each map and calculate totals
-    const montanaPlayerScores = new Map() // playerName -> totalScore
-    const processedMaps = []
-
-    // Process each map in the campaign
-    for (let i = 0; i < currentCampaign.playlist.length; i++) {
-        try {
-            const playlistItem = currentCampaign.playlist[i]
-            const mapUid = playlistItem.mapUid
-
-            console.log(`📍 Processing map ${i + 1}/${currentCampaign.playlist.length}: ${mapUid}`)
-
-            // Get cached map information
-            const mapInfo = await getCachedMapInfo(mapUid, APICredentials)
-            const trackName = mapInfo.name
-            processedMaps.push(trackName)
-
-            console.log(`🏔️ Getting Montana players for map: ${trackName} using getMontanaTopPlayerTimes`)
-
-            // Get Montana player times for this specific map
-            const montanaResult = await getMontanaTopPlayerTimes(mapUid, APICredentials)
-
-            if (montanaResult && typeof montanaResult === 'string') {
-                // Parse the formatted result to extract player names and positions
-                const lines = montanaResult.split('\n').filter(line => line.trim())
-
-                lines.forEach((line, index) => {
-                    // Match emoji format like ":first_place: **PlayerName** time"
-                    const match = line.match(/:(?:first_place|second_place|third_place|medal):\s*\*\*(.+?)\*\*/)
-                    if (match) {
-                        const playerName = match[1].trim()
-                        // Give points based on position: 1st = 100, 2nd = 95, 3rd = 90, 4th = 85, 5th = 80
-                        const points = Math.max(0, 105 - (index + 1) * 5)
-
-                        if (montanaPlayerScores.has(playerName)) {
-                            montanaPlayerScores.set(playerName, montanaPlayerScores.get(playerName) + points)
-                        } else {
-                            montanaPlayerScores.set(playerName, points)
-                        }
-
-                        console.log(`📊 ${playerName}: +${points} points (position ${index + 1})`)
-                    }
-                })
-
-                console.log(`✅ Processed ${trackName} - found Montana players`)
-
-            } else {
-                console.log(`⚠️ No Montana players found for ${trackName}`)
-            }
-
-        } catch (mapError) {
-            console.log(`❌ Error processing map ${i + 1}:`, mapError.message)
-            continue
-        }
-    }
-
-    console.log(`📊 Final Montana player scores:`)
-    montanaPlayerScores.forEach((score, playerName) => {
-        console.log(`  ${playerName}: ${score} points`)
-    })
-
-    // Check if we found any Montana players
-    if (montanaPlayerScores.size === 0) {
-        throw new Error('No Montana players found in any weekly shorts maps')
-    }
-
-    // Sort players by total score (descending)
-    const sortedPlayers = Array.from(montanaPlayerScores.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5) // Top 5
-
-    console.log(`🏆 Top 5 Montana players:`)
-    sortedPlayers.forEach(([playerName, totalScore], index) => {
-        console.log(`  ${index + 1}. ${playerName}: ${totalScore} points`)
-    })
-
-    // Format the result for Discord embed
-    const dictionary = {
-        'users': []
-    }
-
-    sortedPlayers.forEach(([playerName, totalScore], index) => {
-        dictionary.users.push({
-            nameOnPlatform: playerName,
-            sp: totalScore // Use our calculated points as "SP"
-        })
-    })
-
-    const formattedResult = scoreFormatter(dictionary)
-
-    return {
-        success: true,
-        data: formattedResult,
-        campaignName: `${campaignName} (Individual Map Scores)`,
-        playerCount: sortedPlayers.length,
-        fallbackUsed: true
-    }
-}
-
-async function getWeeklyShortsTopFive() {
-    try {
-        console.log('Getting Weekly Shorts top 5 overall scores from Nadeo API...')
-
-        // Get API credentials for Nadeo services
-        const APICredentials = await APILogin()
-
-        // First, get the current weekly shorts campaign to get the seasonUid
-        console.log('Fetching current weekly shorts campaign...')
-        const campaignResponse = await fetch('https://live-services.trackmania.nadeo.live/api/campaign/weekly-shorts?offset=0&length=1', {
-            headers: {
-                'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-                'User-Agent': BOT_CONFIG.USER_AGENT
-            }
-        })
-
-        if (!campaignResponse.ok) {
-            throw new Error(`Weekly shorts campaign API returned ${campaignResponse.status}: ${await campaignResponse.text()}`)
-        }
-
-        const weeklyData = await campaignResponse.json()
-
-        if (!weeklyData.campaignList || weeklyData.campaignList.length === 0) {
-            throw new Error('No weekly campaigns found in API response')
-        }
-
-        const currentCampaign = weeklyData.campaignList[0]
-        const campaignName = currentCampaign.name
-
-        console.log(`Found campaign: ${campaignName}`)
-        console.log(`Campaign object keys:`, Object.keys(currentCampaign))
-        console.log(`Campaign ID:`, currentCampaign.id || currentCampaign.seasonUid || currentCampaign.uid || 'Not found')
-
-        // Try to get the campaign ID (groupUid) for the leaderboard API
-        const campaignId = currentCampaign.id || currentCampaign.seasonUid || currentCampaign.uid;
-
-        if (!campaignId) {
-            console.log('❌ Could not find campaign ID, falling back to individual map scores')
-            throw new Error('Campaign ID not found in response')
-        }
-
-        console.log(`🏔️ Getting Montana players from official campaign leaderboard...`)
-
-        // Get the official campaign leaderboard with actual SP scores
-        const campaignResult = await getWeeklyShortsCampaignLeaderboard(campaignId, APICredentials)
-
-        if (!campaignResult || !campaignResult.users || campaignResult.users.length === 0) {
-            console.log('❌ Campaign leaderboard failed or returned no Montana players, falling back to individual map scoring...')
-
-            // Fallback: Use the individual map approach that was working before
-            return await getWeeklyShortsIndividualMapScoring(currentCampaign, APICredentials, campaignName)
-        }
-
-        console.log(`🏆 Found ${campaignResult.users.length} Montana players in campaign leaderboard`)
-
-        // Format the result using the existing scoreFormatter
-        const formattedResult = scoreFormatter(campaignResult)
-
-        console.log('✅ Successfully retrieved Montana campaign leaderboard with official SP scores')
-
-        return {
-            success: true,
-            data: formattedResult,
-            campaignName: campaignName,
-            playerCount: campaignResult.users.length
-        }
-
-    } catch (error) {
-        console.log(`❌ Error in getWeeklyShortsTopFive: ${error.message}`)
-
-        return {
-            success: false,
-            error: error.message,
-            fallbackMessage: `
-**Error getting Weekly Shorts leaderboard:**
-
-**Error:** ${error.message}
-
-**Possible causes:**
-- Trackmania Live Services API is temporarily down
-- Campaign leaderboard is not yet available
-- Authentication issues
-- Network connectivity problems
-
-**Alternative:** Check Weekly Shorts manually at: https://trackmania.io/#/campaigns/weekly
-
-This bot is now using the official Trackmania campaign leaderboard API to get accurate SP (Score Points) instead of custom scoring.
-            `
-        }
     }
 }
 
@@ -1009,7 +746,6 @@ This is a temporary issue with Trackmania's authentication service.`
         }
 
         const data = await response.json();
-        console.log('📊 API Response received:', JSON.stringify(data, null, 2));
 
         // Find Montana zone in the response
         const montanaZone = data.tops?.find(zone =>
@@ -1038,7 +774,7 @@ This is a temporary issue with Trackmania's authentication service.`
 
         // Get player names for the account IDs
         const accountIds = montanaZone.top.map(player => player.accountId);
-        const playerNames = await getCachedPlayerNames(accountIds, APICredentials);
+        const playerNames = await getCachedPlayerNames(accountIds);
 
         // Update the formatted data with actual player names
         formattedData.users.forEach((user, index) => {
@@ -1357,74 +1093,29 @@ async function getMontanaCampaignScores() {
         }
 
         const campaign = campaignData.campaignList[0];
-        console.log(`Processing campaign: ${campaign.name} with ${campaign.playlist?.length || 0} tracks`);
-        console.log(`🔍 Campaign object keys:`, Object.keys(campaign));
-        console.log(`🔍 Full campaign object:`, JSON.stringify(campaign, null, 2));
+        const seasonUid = campaign.seasonUid;
+        console.log(`Processing campaign: ${campaign.name} (seasonUid: ${seasonUid}) with ${campaign.playlist?.length || 0} tracks`);
 
-        // Get the campaign ID/UID for leaderboard lookup
-        const campaignId = campaign.uid || campaign.id;
-        
-        // Try the group ID you found from the game first
-        const gameGroupId = '0676571d-3907-4dcb-8068-df28684e6a03';
-        
-        console.log(`🔍 Campaign ID from API: ${campaignId}`);
-        console.log(`🔍 Group ID from game: ${gameGroupId}`);
-        
-        if (!campaignId) {
-            throw new Error('Campaign ID not found');
+        if (!seasonUid) {
+            throw new Error('seasonUid not found in campaign data');
         }
 
-        console.log(`🏆 Getting Montana campaign leaderboard for campaign: ${campaignId}`);
+        console.log(`🏆 Getting Montana campaign leaderboard using seasonUid: ${seasonUid}`);
 
-        // Try the group ID from the game first, then fallback to campaign ID
-        let leaderboardData = null;
-        let usedGroupId = null;
-        
-        // First try the group ID you found from the game
-        try {
-            console.log(`🎮 Trying game group ID: ${gameGroupId}`);
-            const gameLeaderboardUrl = `https://live-services.trackmania.nadeo.live/api/token/leaderboard/group/${gameGroupId}/top?length=100&onlyWorld=false&offset=0`;
-            
-            const gameResponse = await fetch(gameLeaderboardUrl, {
-                headers: {
-                    'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-                    'User-Agent': BOT_CONFIG.USER_AGENT
-                }
-            });
-
-            if (gameResponse.ok) {
-                leaderboardData = await gameResponse.json();
-                usedGroupId = gameGroupId;
-                console.log(`✅ Game group ID worked! Got ${leaderboardData.tops?.length || 0} zones`);
-            } else {
-                console.log(`❌ Game group ID failed: ${gameResponse.status}`);
+        const leaderboardUrl = `https://live-services.trackmania.nadeo.live/api/token/leaderboard/group/${seasonUid}/top?length=100&onlyWorld=false&offset=0`;
+        const leaderboardResponse = await fetch(leaderboardUrl, {
+            headers: {
+                'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
+                'User-Agent': BOT_CONFIG.USER_AGENT
             }
-        } catch (gameError) {
-            console.log(`❌ Error with game group ID: ${gameError.message}`);
+        });
+
+        if (!leaderboardResponse.ok) {
+            throw new Error(`Campaign leaderboard API returned ${leaderboardResponse.status}`);
         }
 
-        // If game group ID didn't work, try the campaign ID
-        if (!leaderboardData) {
-            console.log(`📊 Trying campaign ID from API: ${campaignId}`);
-            const leaderboardUrl = `https://live-services.trackmania.nadeo.live/api/token/leaderboard/group/${campaignId}/top?length=100&onlyWorld=false&offset=0`;
-            
-            const leaderboardResponse = await fetch(leaderboardUrl, {
-                headers: {
-                    'Authorization': `nadeo_v1 t=${APICredentials[2].accessToken}`,
-                    'User-Agent': BOT_CONFIG.USER_AGENT
-                }
-            });
-
-            if (!leaderboardResponse.ok) {
-                console.log(`❌ Campaign leaderboard API failed: ${leaderboardResponse.status}`);
-                throw new Error(`Campaign leaderboard API returned ${leaderboardResponse.status}`);
-            }
-
-            leaderboardData = await leaderboardResponse.json();
-            usedGroupId = campaignId;
-            console.log(`✅ Campaign ID worked! Got ${leaderboardData.tops?.length || 0} zones`);
-        }
-        console.log(`✅ Got campaign leaderboard with ${leaderboardData.tops?.length || 0} zones using group ID: ${usedGroupId}`);
+        const leaderboardData = await leaderboardResponse.json();
+        console.log(`✅ Got campaign leaderboard with ${leaderboardData.tops?.length || 0} zones`);
 
         // Find Montana zone in the campaign leaderboard
         const montanaZone = leaderboardData.tops?.find(zone =>
@@ -1440,7 +1131,7 @@ async function getMontanaCampaignScores() {
 
         // Get player names for the account IDs
         const accountIds = montanaZone.top.map(player => player.accountId);
-        const playerNames = await getCachedPlayerNames(accountIds, APICredentials);
+        const playerNames = await getCachedPlayerNames(accountIds);
 
         // Format the data for the embed (take top 5)
         const formattedData = {
@@ -1456,7 +1147,7 @@ async function getMontanaCampaignScores() {
             data: formattedData, // Return raw data, not formatted
             campaignName: campaign.name || 'Current Campaign',
             trackCount: campaign.playlist?.length || 0,
-            groupId: usedGroupId
+            groupId: seasonUid
         };
 
         // Cache the response for 1 hour (campaign scores change less frequently)
@@ -1480,7 +1171,6 @@ module.exports = {
     getTotdRecords,
     getTopPlayerScores,
     getWeeklyShorts,
-    getWeeklyShortsTopFive,
     getMontanaTopPlayerTimes,
     getCachedMapInfo,
     cleanTrackName,

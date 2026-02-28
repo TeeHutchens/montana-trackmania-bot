@@ -24,7 +24,15 @@ module.exports = {
         const trackNumber = parseInt(userOptionInput[0]['value'], 10)
         let result = null
 
-        const campaignObject = await TMIOclient.campaigns.currentSeason()
+        let campaignObject
+        try {
+            campaignObject = await TMIOclient.campaigns.currentSeason()
+        } catch (tmioError) {
+            console.log('TMIO currentSeason error:', tmioError.message || tmioError)
+            await interaction.editReply('Unable to fetch campaign data. The trackmania.io API may be unavailable.')
+            return
+        }
+
         if (campaignObject._data.playlist.length < trackNumber || trackNumber < 1) {
             console.log(`Campaign does not contain track #${trackNumber}`)
             await interaction.editReply(`${username} has entered an invalid track number`)

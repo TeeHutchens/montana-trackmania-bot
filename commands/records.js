@@ -37,14 +37,20 @@ module.exports = {
         let result, campaignObject = null
         let searchIsValid = true
 
-        await TMIOclient.campaigns.search(campaignName).then(async campaigns => {
-            if (campaigns[0] === undefined) {
-                console.log('No campaigns were found when searched.')
-                searchIsValid = false
-            } else {
-                campaignObject = await campaigns[0].getCampaign()
-            }
-        })
+        try {
+            await TMIOclient.campaigns.search(campaignName).then(async campaigns => {
+                if (campaigns[0] === undefined) {
+                    console.log('No campaigns were found when searched.')
+                    searchIsValid = false
+                } else {
+                    campaignObject = await campaigns[0].getCampaign()
+                }
+            })
+        } catch (tmioError) {
+            console.log('TMIO campaign search error:', tmioError.message || tmioError)
+            await interaction.editReply('Unable to search campaigns. The trackmania.io API may be unavailable.')
+            return
+        }
 
         if (searchIsValid == false) {
             await interaction.editReply('No campaigns were found when searched.')
