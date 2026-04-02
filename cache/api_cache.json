@@ -35,5 +35,81 @@
     },
     "expires": 1772238859585,
     "timestamp": 1772236159585
+  },
+  "montana_campaign_scores": {
+    "data": {
+      "success": true,
+      "data": {
+        "users": [
+          {
+            "nameOnPlatform": "FrostyDogTM",
+            "sp": 20563,
+            "position": 1
+          },
+          {
+            "nameOnPlatform": "Vectorecker",
+            "sp": 19492,
+            "position": 2
+          },
+          {
+            "nameOnPlatform": "ACEbananaa",
+            "sp": 17586,
+            "position": 3
+          },
+          {
+            "nameOnPlatform": "Klint.TM",
+            "sp": 16406,
+            "position": 4
+          },
+          {
+            "nameOnPlatform": "zbunde",
+            "sp": 16138,
+            "position": 5
+          }
+        ]
+      },
+      "campaignName": "Winter 2026",
+      "trackCount": 25,
+      "groupId": "dccdf820-6a24-4ab1-9078-58fea41282db"
+    },
+    "expires": 1772241236131,
+    "timestamp": 1772238536131
+  },
+  "montana_scores_d1de47fa-adbe-4002-9cf1-96763c508117": {
+    "data": {
+      "success": true,
+      "data": {
+        "users": [
+          {
+            "nameOnPlatform": "FrostyDogTM",
+            "sp": 7030,
+            "position": 1
+          },
+          {
+            "nameOnPlatform": "Klint.TM",
+            "sp": 4448,
+            "position": 2
+          },
+          {
+            "nameOnPlatform": "ACEbananaa",
+            "sp": 3933,
+            "position": 3
+          },
+          {
+            "nameOnPlatform": "Silly_TM",
+            "sp": 3912,
+            "position": 4
+          },
+          {
+            "nameOnPlatform": "Tee.TM",
+            "sp": 2893,
+            "position": 5
+          }
+        ]
+      },
+      "campaignName": "Weekly Shorts"
+    },
+    "expires": 1774282492773,
+    "timestamp": 1774279792773
   }
 }

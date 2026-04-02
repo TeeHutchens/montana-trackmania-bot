@@ -52,10 +52,22 @@ client.on('interactionCreate', async (interaction) => {
 		await command.execute(interaction);
 	} catch (error) {
 		console.error(error);
-		return interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+		const reply = { content: 'There was an error while executing this command!', ephemeral: true };
+		try {
+			if (interaction.deferred || interaction.replied) {
+				await interaction.editReply(reply);
+			} else {
+				await interaction.reply(reply);
+			}
+		} catch (replyError) {
+			console.error('Failed to send error reply:', replyError);
+		}
 	}
 });
 
-client.login(process.env.DISCORD_TOKEN)
+client.login(process.env.DISCORD_TOKEN).catch((error) => {
+	console.error('❌ Failed to login to Discord:', error);
+	process.exit(1);
+});
 
 

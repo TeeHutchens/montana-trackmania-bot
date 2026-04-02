@@ -2,7 +2,7 @@
 // Run with: node test-verify-scores.js
 require('dotenv').config();
 const fetch = require('node-fetch');
-const { loginUbi, loginTrackmaniaUbi, loginTrackmaniaNadeo } = require('trackmania-api-node');
+const { APILogin } = require('./functions/authentication.js');
 const { BOT_CONFIG } = require('./constants.js');
 const { cleanTrackName } = require('./functions/functions.js');
 
@@ -29,10 +29,8 @@ async function run() {
     console.log('VERIFY: Montana Weekly Shorts SP values');
     console.log('='.repeat(65));
 
-    const creds = Buffer.from(process.env.UBI_USERNAME + ':' + process.env.UBI_PASSWORD).toString('base64');
-    const ubi = await loginUbi(creds);
-    const nadeo = await loginTrackmaniaUbi(ubi.ticket);
-    const live = await loginTrackmaniaNadeo(nadeo.accessToken, 'NadeoLiveServices');
+    const APICredentials = await APILogin();
+    const live = APICredentials[2];
     const tmToken = await getTMApiToken();
     console.log('  ✅ Auth OK\n');
 
