@@ -1,40 +1,40 @@
 {
-  "montana_scores_9a082efb-ad99-4eff-9ad8-168ca5dc07dd": {
+  "montana_scores_96d0e228-6a04-4c80-b97c-83d892c2c0d5": {
     "data": {
       "success": true,
       "data": {
         "users": [
           {
-            "nameOnPlatform": "Klint.TM",
-            "sp": 5807,
+            "nameOnPlatform": "OmgPrimo",
+            "sp": 5768,
             "position": 1
           },
           {
-            "nameOnPlatform": "zbunde",
-            "sp": 3843,
+            "nameOnPlatform": "FrostyDogTM",
+            "sp": 3544,
             "position": 2
           },
           {
-            "nameOnPlatform": "demon66697",
-            "sp": 3710,
+            "nameOnPlatform": "Klint.TM",
+            "sp": 3096,
             "position": 3
           },
           {
-            "nameOnPlatform": "Silly_TM",
-            "sp": 2996,
+            "nameOnPlatform": "zbunde",
+            "sp": 3093,
             "position": 4
           },
           {
-            "nameOnPlatform": "FrostyDogTM",
-            "sp": 2911,
+            "nameOnPlatform": "TARPON_666",
+            "sp": 2864,
             "position": 5
           }
         ]
       },
       "campaignName": "Weekly Shorts"
     },
-    "expires": 1772238859585,
-    "timestamp": 1772236159585
+    "expires": 1775167140422,
+    "timestamp": 1775164440422
   },
   "montana_campaign_scores": {
     "data": {
@@ -43,27 +43,27 @@
         "users": [
           {
             "nameOnPlatform": "FrostyDogTM",
-            "sp": 20563,
+            "sp": 19257,
             "position": 1
           },
           {
             "nameOnPlatform": "Vectorecker",
-            "sp": 19492,
+            "sp": 18250,
             "position": 2
           },
           {
             "nameOnPlatform": "ACEbananaa",
-            "sp": 17586,
+            "sp": 16222,
             "position": 3
           },
           {
-            "nameOnPlatform": "Klint.TM",
-            "sp": 16406,
+            "nameOnPlatform": "zbunde",
+            "sp": 15456,
             "position": 4
           },
           {
-            "nameOnPlatform": "zbunde",
-            "sp": 16138,
+            "nameOnPlatform": "Klint.TM",
+            "sp": 15259,
             "position": 5
           }
         ]
@@ -72,44 +72,46 @@
       "trackCount": 25,
       "groupId": "dccdf820-6a24-4ab1-9078-58fea41282db"
     },
-    "expires": 1772241236131,
-    "timestamp": 1772238536131
+    "expires": 1775176536055,
+    "timestamp": 1775173836055
   },
-  "montana_scores_d1de47fa-adbe-4002-9cf1-96763c508117": {
+  "montana_weekly_track_69_1": {
     "data": {
       "success": true,
-      "data": {
-        "users": [
+      "embed": {
+        "title": "🏔️ Week 69 Track 1 - Montana Records",
+        "type": "rich",
+        "description": "**1 - TMNF Memories** by ezilo.\nMontana players ranked by completion time",
+        "url": "https://trackmania.io/#/leaderboard/4F_LWXXcYPeCej8IKNpSTecXy35",
+        "timestamp": null,
+        "color": 4886754,
+        "fields": [
           {
-            "nameOnPlatform": "FrostyDogTM",
-            "sp": 7030,
-            "position": 1
-          },
-          {
-            "nameOnPlatform": "Klint.TM",
-            "sp": 4448,
-            "position": 2
-          },
-          {
-            "nameOnPlatform": "ACEbananaa",
-            "sp": 3933,
-            "position": 3
-          },
-          {
-            "nameOnPlatform": "Silly_TM",
-            "sp": 3912,
-            "position": 4
-          },
-          {
-            "nameOnPlatform": "Tee.TM",
-            "sp": 2893,
-            "position": 5
+            "name": "🏆 MT Leaderboards",
+            "value": ":first_place: **Tee.TM** SECRET\n:second_place: **Klint.TM** SECRET\n:third_place: **Vectorecker** SECRET\n:medal: **ImTooSlow.TM** SECRET\n:medal: **Derty_T8nt** SECRET\n",
+            "inline": false
           }
-        ]
+        ],
+        "thumbnail": {
+          "url": "https://trackmania.io/img/square.png"
+        },
+        "image": null,
+        "author": {
+          "name": "Created by ezilo.",
+          "url": "https://trackmania.io/#/player/8a218ab4-ff2b-4213-acd2-eacd63bb44ec",
+          "icon_url": "https://trackmania.io/img/square.png"
+        },
+        "footer": {
+          "text": "Week 69 • Track 1 • Weekly Shorts"
+        }
       },
-      "campaignName": "Weekly Shorts"
+      "campaignName": "Week 69",
+      "weekNumber": 69,
+      "trackNumber": 1,
+      "trackName": "1 - TMNF Memories",
+      "authorName": "ezilo."
     },
-    "expires": 1774282492773,
-    "timestamp": 1774279792773
+    "expires": 1775450816952,
+    "timestamp": 1775448116952
   }
 }

@@ -20,10 +20,10 @@ module.exports = {
                 .setDescription('Get Montana records for a specific Weekly Shorts track')
                 .addIntegerOption(option =>
                     option.setName('week')
-                        .setDescription('Week number (1 = oldest, 32 = current week, etc.)')
+                        .setDescription('Week number (1 = oldest, current week, etc.)')
                         .setRequired(true)
                         .setMinValue(1)
-                        .setMaxValue(52))
+                        .setMaxValue(200))
                 .addIntegerOption(option =>
                     option.setName('track')
                         .setDescription('Track number within the week (1-5)')
