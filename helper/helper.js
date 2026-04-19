@@ -1,9 +1,4 @@
 const { Formatters, MessageEmbed } = require('discord.js');
-const TMIO = require('trackmania.io'), TMIOclient = new TMIO.Client();
-const { BOT_CONFIG } = require('../constants.js');
-
-// Set User-Agent for TMIO client
-TMIOclient.setUserAgent(BOT_CONFIG.USER_AGENT);
 
 function recordPlacingFormatter(playerTimeMapSort) {
     let result = ''
@@ -134,88 +129,11 @@ function embedScoresFormatter(data, campaign, ioCampaignId) {
     return replyEmbed
 }
 
-async function getPlayerProfile(playerName) {
-    let playerCotd, playerMatchmaking, name, playerObject = null
-
-    await TMIOclient.players.search(playerName).then(async player => {
-        name = player
-        await TMIOclient.players.get(player[0].id).then(async object => {
-            playerObject = object
-            playerMatchmaking = await object.matchmaking()
-            playerCotd = await object.cotd()
-        })
-    })
-
-    const formatterResult = playerProfileFormatter(playerObject, playerCotd, playerMatchmaking)
-    return formatterResult
-}
-
-function playerProfileFormatter(playerObject, cotd, matchmaking) {
-    let exampleEmbed = new MessageEmbed()
-        .setColor('#0099ff')
-        .setTitle(playerObject.name)
-        .setURL(`https://trackmania.io/#/player/${playerObject.id}`)
-        .setAuthor({ name: 'Brought to you by Trackmania.io', iconURL: 'https://trackmania.io/img/square.png', url: `https://trackmania.io/#/totd` })
-        .setDescription(`${playerObject.zone[0].name}, ${playerObject.zone[1].name}, ${playerObject.zone[2].name}`)
-        .setThumbnail('https://www.trackmania.com/90987169_2814211285336341_8730731110385844224_o/')
-        .addFields(
-            { name: `:trophy: Trophy Points`, value: `${(playerObject.trophies.points).toLocaleString("en-US")}` },
-            { name: '\u200B', value: '\u200B' },
-            { name: `${playerObject.zone[0].name}`, value: `${ordinal_suffix_of(playerObject.zone[0].ranking)}`, inline: true },
-            { name: `${playerObject.zone[1].name}`, value: `${ordinal_suffix_of(playerObject.zone[1].ranking)}`, inline: true },
-            { name: `${playerObject.zone[2].name}`, value: `${ordinal_suffix_of(playerObject.zone[2].ranking)}`, inline: true },
-            { name: `${playerObject.zone[3].name}`, value: `${ordinal_suffix_of(playerObject.zone[3].ranking)}`, inline: true },
-            { name: '\u200B', value: '\u200B' },
-        )
-        .setFooter({ text: 'This bot is currently in active development.', iconURL: 'https://www.trackmania.com/90987169_2814211285336341_8730731110385844224_o/' });
-
-    if (cotd != null) {
-        exampleEmbed = exampleEmbed.addFields(
-            { name: `CUP OF THE DAY STATS`, value: `Player's COTD statistics` },
-            { name: `Total Played`, value: `${cotd.count}`, inline: true },
-            { name: `Total Div Wins`, value: `${cotd.stats.totalDivWins}`, inline: true },
-            { name: `Total Wins`, value: `${cotd.stats.totalWins}`, inline: true },
-            { name: `Average Div`, value: `${Math.round(cotd.stats.averageDiv * 1000) / 1000}`, inline: true },
-            { name: '\u200B', value: '\u200B' })
-    }
-    if (matchmaking != null) {
-        exampleEmbed = exampleEmbed.addFields(
-            { name: `MATCHMAKING STATS`, value: `Player's 3v3 matchmaking statistics` },
-            { name: `Rank`, value: `${matchmaking.rank} (top ${Math.ceil((matchmaking.rank / matchmaking.totalPlayers) * 100)}%)`, inline: true },
-            { name: `Score`, value: `${matchmaking.score}`, inline: true },
-            { name: '\u200B', value: '\u200B' })
-    }
-    if (playerObject.meta.twitch) {
-        exampleEmbed = exampleEmbed.addField(`Twitch :purple_circle:`, `${playerObject.meta.twitch}`)
-    }
-    if (playerObject.meta.youtube) {
-        exampleEmbed = exampleEmbed.addField(`Youtube :red_circle:`, `${playerObject.meta.youtube}`)
-    }
-    return exampleEmbed
-}
-
-function ordinal_suffix_of(i) {
-    var j = i % 10,
-        k = i % 100;
-    if (j == 1 && k != 11) {
-        return i + "st";
-    }
-    if (j == 2 && k != 12) {
-        return i + "nd";
-    }
-    if (j == 3 && k != 13) {
-        return i + "rd";
-    }
-    return i + "th";
-}
-
 module.exports = {
-    embedFormatter, 
+    embedFormatter,
     montanaEmbedFormatter,
-    timeFormatter, 
-    embedScoresFormatter, 
-    getPlayerProfile, 
-    recordPlacingFormatter, 
-    playerProfileFormatter, 
+    timeFormatter,
+    embedScoresFormatter,
+    recordPlacingFormatter,
     scoreFormatter
 };

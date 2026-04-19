@@ -1,48 +1,21 @@
 {
-  "name": "state-trackmania-bot",
+  "name": "montana-trackmania-bot",
   "version": "1.0.0",
-  "description": "A Discord bot used to display data for New Jersey and Arizona Trackmania 2020 players. ",
+  "description": "A Discord bot for the Montana Trackmania community, displaying leaderboard data for Weekly Shorts and the seasonal campaign filtered to Montana-zone players.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Allanj954/state-trackmania-bot.git"
+    "start": "node index.js",
+    "deploy": "node deploy-commands.js"
   },
   "author": "allanjacob",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/Allanj954/state-trackmania-bot/issues"
-  },
-  "homepage": "https://github.com/Allanj954/state-trackmania-bot#readme",
   "dependencies": {
+    "@discordjs/builders": "^0.12.0",
     "@discordjs/rest": "^0.3.0",
-    "asynckit": "^0.4.0",
-    "axios": "^0.26.0",
-    "combined-stream": "^1.0.8",
-    "debug": "^3.1.0",
-    "delayed-stream": "^1.0.0",
     "discord-api-types": "^0.26.1",
     "discord.js": "^13.17.1",
     "dotenv": "^16.6.1",
-    "events": "^3.3.0",
-    "follow-redirects": "^1.14.9",
-    "form-data": "^4.0.0",
-    "jwt-decode": "^2.2.0",
-    "luxon": "^2.3.1",
-    "mime-db": "^1.51.0",
-    "mime-types": "^2.1.34",
-    "ms": "^2.0.0",
     "node-fetch": "^2.6.7",
-    "tr46": "^0.0.3",
-    "trackmania-api-node": "^0.0.27",
-    "trackmania.io": "^3.2.2",
-    "ts-mixer": "^6.0.0",
-    "tslib": "^2.3.1",
-    "webidl-conversions": "^3.0.1",
-    "whatwg-url": "^5.0.0",
-    "ws": "^8.5.0",
-    "zod": "^3.13.4"
+    "trackmania-api-node": "^0.0.27"
   }
 }

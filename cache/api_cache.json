@@ -113,5 +113,81 @@
     },
     "expires": 1775450816952,
     "timestamp": 1775448116952
+  },
+  "montana_weekly_track_69_5": {
+    "data": {
+      "success": true,
+      "embed": {
+        "title": "🏔️ Week 69 Track 5 - Montana Records",
+        "type": "rich",
+        "description": "**5 - 8 BALL POOL** by Twitch.S1RUIN\nMontana players ranked by completion time",
+        "url": "https://trackmania.io/#/leaderboard/K40caQ0orsrYMT0dBgLgqXgAHFb",
+        "timestamp": null,
+        "color": 4886754,
+        "fields": [
+          {
+            "name": "🏆 MT Leaderboards",
+            "value": ":first_place: **FrostyDogTM** SECRET\n:second_place: **Vectorecker** SECRET\n:third_place: **zbunde** SECRET\n:medal: **Tee.TM** SECRET\n:medal: **Klint.TM** SECRET\n",
+            "inline": false
+          }
+        ],
+        "thumbnail": {
+          "url": "https://trackmania.io/img/square.png"
+        },
+        "image": null,
+        "author": {
+          "name": "Created by Twitch.S1RUIN",
+          "url": "https://trackmania.io/#/player/517c7d84-10aa-4078-a2e7-7212bd8e61b8",
+          "icon_url": "https://trackmania.io/img/square.png"
+        },
+        "footer": {
+          "text": "Week 69 • Track 5 • Weekly Shorts"
+        }
+      },
+      "campaignName": "Week 69",
+      "weekNumber": 69,
+      "trackNumber": 5,
+      "trackName": "5 - 8 BALL POOL",
+      "authorName": "Twitch.S1RUIN"
+    },
+    "expires": 1775454462432,
+    "timestamp": 1775451762432
+  },
+  "montana_scores_48ac2dca-a114-4f19-b730-483a00785899": {
+    "data": {
+      "success": true,
+      "data": {
+        "users": [
+          {
+            "nameOnPlatform": "Silly_TM",
+            "sp": 4111,
+            "position": 1
+          },
+          {
+            "nameOnPlatform": "zbunde",
+            "sp": 3914,
+            "position": 2
+          },
+          {
+            "nameOnPlatform": "Doug-Dale",
+            "sp": 3272,
+            "position": 3
+          },
+          {
+            "nameOnPlatform": "Tee.TM",
+            "sp": 3219,
+            "position": 4
+          },
+          {
+            "nameOnPlatform": "Klint.TM",
+            "sp": 3170,
+            "position": 5
+          }
+        ]
+      },
+      "campaignName": "Weekly Shorts"
+    },
+    "expires": 1776640941755,
+    "timestamp": 1776638241755
   }
 }

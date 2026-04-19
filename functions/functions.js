@@ -1,5 +1,4 @@
-const TMIO = require('trackmania.io'), TMIOclient = new TMIO.Client();
-const { getTopPlayersGroup, getTopPlayersMap, getMaps, getMapRecords } = require('trackmania-api-node')
+const { getTopPlayersMap, getMaps, getMapRecords } = require('trackmania-api-node')
 const { APILogin } = require("../functions/authentication.js")
 const { embedFormatter, montanaEmbedFormatter, recordPlacingFormatter, scoreFormatter } = require("../helper/helper.js")
 const { BOT_CONFIG } = require('../constants.js')
@@ -8,19 +7,6 @@ const PlayerCache = require('../cache/PlayerCache.js')
 const MapCache = require('../cache/MapCache.js')
 const APICache = require('../cache/APICache.js')
 require('dotenv').config()
-
-// Set TMIO user agent immediately (required by trackmania.io API)
-TMIOclient.setUserAgent(BOT_CONFIG.USER_AGENT);
-
-// Wrap TMIO calls with a timeout so they fail fast instead of hanging indefinitely
-function tmioWithTimeout(promise, timeoutMs = 8000) {
-    return Promise.race([
-        promise,
-        new Promise((_, reject) =>
-            setTimeout(() => reject(new Error(`TMIO request timed out after ${timeoutMs}ms`)), timeoutMs)
-        )
-    ]);
-}
 
 // ── api.trackmania.com OAuth2 token (client_credentials) ────────────────────
 let _tmApiToken = null;
@@ -438,53 +424,6 @@ async function getMontanaTopPlayerTimes(mapUid, APICredentials = null) {
     }
 }
 
-async function getCampaignRecords(campaignObject, trackNumber) {
-    let authorAccountId, trackName, trackUid, authorName = null
-
-    trackUid = campaignObject['_data']['playlist'][trackNumber - 1].mapUid
-    trackName = campaignObject['_data']['playlist'][trackNumber - 1].name
-    authorAccountId = campaignObject['_data']['playlist'][trackNumber - 1].author
-    if (campaignObject.mapCount < trackNumber) {
-        console.log(`Campaign does not contain track #${trackNumber}`)
-        return 'No Track Found'
-    }
-
-    try {
-        const nameData = await getDisplayNames([authorAccountId]);
-        authorName = nameData[authorAccountId] || 'Unknown Author';
-    } catch (error) {
-        console.log(`Error fetching author name: ${error.message}`)
-        authorName = 'Unknown Author'
-    }
-
-    const topTimesResult = await getTopPlayerTimes(trackUid)
-    const replyEmbed = embedFormatter(trackName, trackUid, topTimesResult, authorName, authorAccountId)
-    return replyEmbed
-}
-
-async function getTotdRecords(date) {
-    let trackName, totdauthor, authorAccountId, trackUid = null
-    try {
-        await tmioWithTimeout(TMIOclient.totd.get(date)).then(async totd => {
-            trackUid = totd.map().id
-            await totd.map().then(async map => {
-                trackUid = map.uid
-                trackName = map.fileName.replace(/\.[^/.]+$/, "").replace(/\.[^/.]+$/, "")
-                await map.author().then(async author => {
-                    totdauthor = author.name
-                    authorAccountId = author.id
-                })
-            })
-        })
-    } catch (error) {
-        console.log(`Error fetching TOTD data from TMIO: ${error.message}`)
-        return 'Error fetching Track of the Day data'
-    }
-    const topTimesResult = await getTopPlayerTimes(trackUid)
-    const replyEmbed = embedFormatter(trackName, trackUid, topTimesResult, totdauthor, authorAccountId)
-    return replyEmbed
-}
-
 async function getWeeklyShorts() {
     const results = []
     try {
@@ -617,43 +556,6 @@ Please try again later!`,
         })
     }
     return results
-}
-
-async function getTopPlayerScores(groupUId) {
-    const APICredentials = await APILogin()
-
-    try {
-        const topPlayersResult = await getTopPlayersGroup(APICredentials[3], groupUId)
-        const playerList = topPlayersResult['tops'][3]['top']
-        const dictionary = {
-            'users': []
-        }
-        const accountIds = []
-        for (const i in playerList) {
-            dictionary['users'].push({
-                'accountId': playerList[i]["accountId"],
-                'uid': '',
-                'nameOnPlatform': '',
-                'position': playerList[i]["position"],
-                'sp': playerList[i]["sp"]
-            })
-            accountIds.push(playerList[i]["accountId"])
-        }
-        // Batch-fetch all player names from api.trackmania.com
-        const nameMap = await getDisplayNames(accountIds).catch(e => {
-            console.log(`Error fetching player names: ${e.message}`);
-            return {};
-        });
-        for (let i = 0; i < dictionary['users'].length; i++) {
-            const accountId = dictionary['users'][i]['accountId'];
-            dictionary['users'][i]['nameOnPlatform'] = nameMap[accountId] || `Player_${accountId.substring(0, 8)}`;
-            dictionary['users'][i]['uid'] = '';
-        }
-        const result = scoreFormatter(dictionary)
-        return result
-    } catch (e) {
-        console.log(e)
-    }
 }
 
 // Function to get Montana-specific scores using the game API
@@ -1167,9 +1069,6 @@ async function getMontanaCampaignScores() {
 }
 
 module.exports = {
-    getCampaignRecords,
-    getTotdRecords,
-    getTopPlayerScores,
     getWeeklyShorts,
     getMontanaTopPlayerTimes,
     getCachedMapInfo,
