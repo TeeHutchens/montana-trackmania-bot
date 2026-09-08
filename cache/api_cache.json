@@ -1,40 +1,39 @@
 {
-  "montana_scores_96d0e228-6a04-4c80-b97c-83d892c2c0d5": {
+  "montana_campaign_track_8": {
     "data": {
       "success": true,
-      "data": {
-        "users": [
+      "embed": {
+        "title": "🏆 Spring 2026 - 08 - Campaign Track 8",
+        "type": "rich",
+        "description": "🏔️ Montana records for Spring 2026 - Track 8",
+        "url": "https://trackmania.io/#/leaderboard/2AIh0EtzQYZV75rl0_sAwuLCAhd",
+        "timestamp": null,
+        "color": 4886754,
+        "fields": [
           {
-            "nameOnPlatform": "OmgPrimo",
-            "sp": 5768,
-            "position": 1
-          },
-          {
-            "nameOnPlatform": "FrostyDogTM",
-            "sp": 3544,
-            "position": 2
-          },
-          {
-            "nameOnPlatform": "Klint.TM",
-            "sp": 3096,
-            "position": 3
-          },
-          {
-            "nameOnPlatform": "zbunde",
-            "sp": 3093,
-            "position": 4
-          },
-          {
-            "nameOnPlatform": "TARPON_666",
-            "sp": 2864,
-            "position": 5
+            "name": "🏆 MT Leaderboards",
+            "value": ":first_place: **Silly_TM** 22.408\n:second_place: **Vectorecker** 22.636\n:third_place: **ACEbananaa** 23.410\n:medal: **FrostyDogTM** 23.828\n:medal: **tomato.soup.tm** 23.942\n\n\n🏔️ *Montana Group Rankings*",
+            "inline": false
           }
-        ]
+        ],
+        "thumbnail": {
+          "url": "https://trackmania.io/img/square.png"
+        },
+        "image": null,
+        "author": {
+          "name": "Created by Nadeo",
+          "url": "https://trackmania.io/#/player/aa02b90e-0652-4a1c-b705-4677e2983003",
+          "icon_url": "https://trackmania.io/img/square.png"
+        },
+        "footer": {
+          "text": "🏆 Campaign Track | Track 8/25"
+        }
       },
-      "campaignName": "Weekly Shorts"
+      "trackName": "Spring 2026 - 08",
+      "campaignName": "Spring 2026"
     },
-    "expires": 1775167140422,
-    "timestamp": 1775164440422
+    "expires": 1777449204388,
+    "timestamp": 1777446504388
   },
   "montana_campaign_scores": {
     "data": {
@@ -42,152 +41,37 @@
       "data": {
         "users": [
           {
-            "nameOnPlatform": "FrostyDogTM",
-            "sp": 19257,
+            "nameOnPlatform": "ACEbananaa",
+            "sp": 24475,
             "position": 1
           },
           {
             "nameOnPlatform": "Vectorecker",
-            "sp": 18250,
+            "sp": 23906,
             "position": 2
           },
           {
-            "nameOnPlatform": "ACEbananaa",
-            "sp": 16222,
+            "nameOnPlatform": "FrostyDogTM",
+            "sp": 15795,
             "position": 3
           },
           {
-            "nameOnPlatform": "zbunde",
-            "sp": 15456,
+            "nameOnPlatform": "von_ghostie",
+            "sp": 11558,
             "position": 4
           },
           {
-            "nameOnPlatform": "Klint.TM",
-            "sp": 15259,
+            "nameOnPlatform": "Coveredmangough",
+            "sp": 10599,
             "position": 5
           }
         ]
       },
-      "campaignName": "Winter 2026",
+      "campaignName": "Spring 2026",
       "trackCount": 25,
-      "groupId": "dccdf820-6a24-4ab1-9078-58fea41282db"
+      "groupId": "2b5465cd-38a6-4103-b4c9-27f72adceba6"
     },
-    "expires": 1775176536055,
-    "timestamp": 1775173836055
-  },
-  "montana_weekly_track_69_1": {
-    "data": {
-      "success": true,
-      "embed": {
-        "title": "🏔️ Week 69 Track 1 - Montana Records",
-        "type": "rich",
-        "description": "**1 - TMNF Memories** by ezilo.\nMontana players ranked by completion time",
-        "url": "https://trackmania.io/#/leaderboard/4F_LWXXcYPeCej8IKNpSTecXy35",
-        "timestamp": null,
-        "color": 4886754,
-        "fields": [
-          {
-            "name": "🏆 MT Leaderboards",
-            "value": ":first_place: **Tee.TM** SECRET\n:second_place: **Klint.TM** SECRET\n:third_place: **Vectorecker** SECRET\n:medal: **ImTooSlow.TM** SECRET\n:medal: **Derty_T8nt** SECRET\n",
-            "inline": false
-          }
-        ],
-        "thumbnail": {
-          "url": "https://trackmania.io/img/square.png"
-        },
-        "image": null,
-        "author": {
-          "name": "Created by ezilo.",
-          "url": "https://trackmania.io/#/player/8a218ab4-ff2b-4213-acd2-eacd63bb44ec",
-          "icon_url": "https://trackmania.io/img/square.png"
-        },
-        "footer": {
-          "text": "Week 69 • Track 1 • Weekly Shorts"
-        }
-      },
-      "campaignName": "Week 69",
-      "weekNumber": 69,
-      "trackNumber": 1,
-      "trackName": "1 - TMNF Memories",
-      "authorName": "ezilo."
-    },
-    "expires": 1775450816952,
-    "timestamp": 1775448116952
-  },
-  "montana_weekly_track_69_5": {
-    "data": {
-      "success": true,
-      "embed": {
-        "title": "🏔️ Week 69 Track 5 - Montana Records",
-        "type": "rich",
-        "description": "**5 - 8 BALL POOL** by Twitch.S1RUIN\nMontana players ranked by completion time",
-        "url": "https://trackmania.io/#/leaderboard/K40caQ0orsrYMT0dBgLgqXgAHFb",
-        "timestamp": null,
-        "color": 4886754,
-        "fields": [
-          {
-            "name": "🏆 MT Leaderboards",
-            "value": ":first_place: **FrostyDogTM** SECRET\n:second_place: **Vectorecker** SECRET\n:third_place: **zbunde** SECRET\n:medal: **Tee.TM** SECRET\n:medal: **Klint.TM** SECRET\n",
-            "inline": false
-          }
-        ],
-        "thumbnail": {
-          "url": "https://trackmania.io/img/square.png"
-        },
-        "image": null,
-        "author": {
-          "name": "Created by Twitch.S1RUIN",
-          "url": "https://trackmania.io/#/player/517c7d84-10aa-4078-a2e7-7212bd8e61b8",
-          "icon_url": "https://trackmania.io/img/square.png"
-        },
-        "footer": {
-          "text": "Week 69 • Track 5 • Weekly Shorts"
-        }
-      },
-      "campaignName": "Week 69",
-      "weekNumber": 69,
-      "trackNumber": 5,
-      "trackName": "5 - 8 BALL POOL",
-      "authorName": "Twitch.S1RUIN"
-    },
-    "expires": 1775454462432,
-    "timestamp": 1775451762432
-  },
-  "montana_scores_48ac2dca-a114-4f19-b730-483a00785899": {
-    "data": {
-      "success": true,
-      "data": {
-        "users": [
-          {
-            "nameOnPlatform": "Silly_TM",
-            "sp": 4111,
-            "position": 1
-          },
-          {
-            "nameOnPlatform": "zbunde",
-            "sp": 3914,
-            "position": 2
-          },
-          {
-            "nameOnPlatform": "Doug-Dale",
-            "sp": 3272,
-            "position": 3
-          },
-          {
-            "nameOnPlatform": "Tee.TM",
-            "sp": 3219,
-            "position": 4
-          },
-          {
-            "nameOnPlatform": "Klint.TM",
-            "sp": 3170,
-            "position": 5
-          }
-        ]
-      },
-      "campaignName": "Weekly Shorts"
-    },
-    "expires": 1776640941755,
-    "timestamp": 1776638241755
+    "expires": 1782098057763,
+    "timestamp": 1782095357763
   }
 }

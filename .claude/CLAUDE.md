@@ -13,11 +13,12 @@ Discord bot for the Montana Trackmania community. Serves leaderboard data for We
 | `/campaign track <track>` | `getMontanaCampaignTrack()` | Montana times for a specific seasonal campaign track |
 
 ## Authentication Flow
-Three-level Nadeo auth via `functions/authentication.js`:
-1. Ubisoft login (`UBI_USERNAME` / `UBI_PASSWORD`) → ticket
-2. `loginTrackmaniaUbi(ticket)` → NadeoServices token (`APICredentials[1]`)
-3. `loginTrackmaniaNadeo(accessToken, 'NadeoLiveServices')` → NadeoLiveServices token (`APICredentials[2]`)
-- `APICredentials[3]` = raw `accessToken` string from level 2
+Two-call Nadeo service account auth via `functions/authentication.js`:
+1. `getNadeoToken(login, password, 'NadeoServices')` → `APICredentials[1]`
+2. `getNadeoToken(login, password, 'NadeoLiveServices')` → `APICredentials[2]`
+- `APICredentials[3]` = raw `accessToken` string from call 2
+- Endpoint: `POST https://prod.trackmania.core.nadeo.online/v2/authentication/token/basic`
+- Uses `NADEO_LOGIN` / `NADEO_PASSWORD` (dedicated Nadeo service account — **not** Ubisoft credentials)
 
 **Player display names**: `api.trackmania.com` OAuth2 `client_credentials` flow using `APP_IDENTIFIER` / `APP_SECRET`. Token is cached in-process with auto-refresh. Batch endpoint: `GET https://api.trackmania.com/api/display-names?accountId[]=...`
 
@@ -51,8 +52,8 @@ constants.js          — BOT_CONFIG.USER_AGENT
 DISCORD_TOKEN=        # Discord bot token
 CLIENT_ID=            # Discord application ID
 GUILD_ID=             # Discord server ID
-UBI_USERNAME=         # Ubisoft account email
-UBI_PASSWORD=         # Ubisoft account password
+NADEO_LOGIN=          # Nadeo service account login
+NADEO_PASSWORD=       # Nadeo service account password
 APP_IDENTIFIER=       # api.trackmania.com OAuth2 client ID
 APP_SECRET=           # api.trackmania.com OAuth2 client secret
 ALLOWED_COMMANDS=weeklyshorts,campaign
@@ -66,9 +67,11 @@ node test-verify-scores.js         # verify campaign SP vs in-game
 ```
 
 ## Deployment
-Runs in Docker. Cache files are owned by the `tee` user inside the container — use `sudo` to edit them from the host when needed.
+Runs in Docker (`docker compose up -d --build`). Cache files are owned by `botuser` inside the container — use `sudo` to edit them from the host when needed.
+
+**After any source change**, the image must be rebuilt: `docker compose up -d --build`. The compose file has no source volume mount — code is baked into the image. If the build fails with a lock file sync error, run `npm install --omit=dev` on the host first to regenerate `package-lock.json`, then rebuild.
 
 ## Known Limitations
 - Nadeo zone leaderboard caps at 5 players per zone (API limitation, cannot be increased)
-- TMIO (`trackmania.io`) is still used for TOTD map metadata only — not for player names
+- `trackmania.io` is fully removed — do not re-add it (see memory for history)
 - Cache permission errors (`EACCES`) are non-fatal when running tests outside Docker
